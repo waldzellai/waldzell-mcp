@@ -2,14 +2,16 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ES2020",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "strict": true,
     "outDir": "dist",
     "rootDir": ".",
     "declaration": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true
   },
   "include": ["index.ts"],
   "exclude": ["node_modules", "dist"]
