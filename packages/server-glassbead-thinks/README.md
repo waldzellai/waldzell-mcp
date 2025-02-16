@@ -2,6 +2,9 @@
 
 An MCP server providing advanced problem-solving capabilities through sequential thinking, mental models, and debugging approaches.
 
+[![smithery badge](https://smithery.ai/badge/@waldzellai/mcp-servers)](https://smithery.ai/server/@waldzellai/mcp-servers)
+
+
 ## Usage Options
 
 ### 1. NPX (Recommended for Claude Desktop)
