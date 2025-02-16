@@ -19,5 +19,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/waldzellai/mcp-servers.git"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
   }
 }
