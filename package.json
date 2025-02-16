@@ -8,11 +8,16 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "clean": "npm run clean --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "docker": "npm run docker --workspace @waldzellai/server-glassbead-thinks"
   },
   "author": "waldzellai",
   "license": "MIT",
   "engines": {
     "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/waldzellai/mcp-servers.git"
   }
 }

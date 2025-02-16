@@ -16,12 +16,18 @@
         "LICENSE"
     ],
     "scripts": {
-        "build": "tsc && shx chmod +x dist/*.js",
+        "build": "npx tsc --listFiles --project tsconfig.json && chmod +x dist/*.js",
         "prepare": "npm run build",
-        "watch": "tsc --watch",
-        "clean": "rimraf dist",
+        "watch": "npx tsc --watch",
+        "clean": "rm -rf dist",
         "prebuild": "npm run clean",
-        "prepublishOnly": "npm run build"
+        "prepublishOnly": "npm run build",
+        "start": "node dist/index.js",
+        "docker": "docker build -t waldzellai/server-glassbead-thinks ."
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/waldzellai/mcp-servers.git"
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "0.5.0",
@@ -32,8 +38,6 @@
     "devDependencies": {
         "@types/node": "^22",
         "@types/yargs": "^17.0.32",
-        "rimraf": "^5.0.5",
-        "shx": "^0.3.4",
         "typescript": "^5.3.3"
     },
     "keywords": [

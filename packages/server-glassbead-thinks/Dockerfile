@@ -3,14 +3,11 @@ FROM node:18-slim
 # Create app directory
 WORKDIR /usr/src/app
 
-# Copy package files
-COPY package*.json ./
+# Copy all source files
+COPY . .
 
 # Install dependencies
 RUN npm install
-
-# Copy source files
-COPY . .
 
 # Build the project
 RUN npm run build

@@ -7,6 +7,10 @@ memory-bank/
 *.log
 .DS_Store
 
+# Other packages in monorepo
+packages/*/
+!packages/server-glassbead-thinks/
+
 # Build artifacts
 dist/
 *.tgz
@@ -36,3 +40,12 @@ CHANGELOG.md
 !README.md
 !src/
 !index.ts
+
+# Keep server package files
+!packages/server-glassbead-thinks/package.json
+!packages/server-glassbead-thinks/package-lock.json
+!packages/server-glassbead-thinks/tsconfig.json
+!packages/server-glassbead-thinks/LICENSE
+!packages/server-glassbead-thinks/README.md
+!packages/server-glassbead-thinks/src/
+!packages/server-glassbead-thinks/index.ts
