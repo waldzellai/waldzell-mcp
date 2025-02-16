@@ -1,5 +1,7 @@
 # @waldzellai/mcp-servers
 
+[![smithery badge](https://smithery.ai/badge/@waldzellai/mcp-servers)](https://smithery.ai/server/@waldzellai/mcp-servers)
+
 A collection of Model Context Protocol (MCP) servers providing various capabilities for AI assistants.
 
 ## Packages
