@@ -1,0 +1,38 @@
+# Development
+node_modules/
+memory-bank/
+.git/
+.gitignore
+.npmignore
+*.log
+.DS_Store
+
+# Build artifacts
+dist/
+*.tgz
+
+# Editor
+.vscode/
+.idea/
+
+# Test files
+__tests__/
+*.test.ts
+*.spec.ts
+
+# Environment
+.env
+*.env.*
+
+# Documentation
+CONTRIBUTING.md
+CHANGELOG.md
+
+# Keep essential files
+!package.json
+!package-lock.json
+!tsconfig.json
+!LICENSE
+!README.md
+!src/
+!index.ts

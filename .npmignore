@@ -1,0 +1,35 @@
+# Development directories
+memory-bank/
+node_modules/
+dist/
+
+# Source files (since we publish compiled JS)
+*.ts
+!*.d.ts
+
+# Config files
+tsconfig.json
+.gitignore
+.npmignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test files
+__tests__/
+*.test.ts
+*.spec.ts
+
+# Misc
+.DS_Store
+*.tgz
+.env
