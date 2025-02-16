@@ -1,6 +1,6 @@
 {
     "name": "@waldzellai/server-glassbead-thinks",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "MCP server for sequential thinking, mental models, and debugging approaches",
     "license": "MIT",
     "author": "waldzellai [fork of work by Anthropic, PBC (https://anthropic.com)]",
