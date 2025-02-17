@@ -1,14 +1,14 @@
 {
-    "name": "@waldzellai/server-glassbead-thinks",
+    "name": "@waldzellai/clear-thought",
     "version": "0.0.2",
-    "description": "MCP server for sequential thinking, mental models, and debugging approaches",
+    "description": "MCP server for systematic thinking, mental models, debugging approaches, and memory management",
     "license": "MIT",
-    "author": "waldzellai [fork of work by Anthropic, PBC (https://anthropic.com)]",
-    "homepage": "https://modelcontextprotocol.io",
-    "bugs": "https://github.com/modelcontextprotocol/servers/issues",
+    "author": "Waldzell AI",
+    "homepage": "https://github.com/waldzellai/clear-thought",
+    "bugs": "https://github.com/waldzellai/clear-thought/issues",
     "type": "module",
     "bin": {
-        "mcp-server-waldzellai-thinks": "dist/index.js"
+        "mcp-server-clear-thought": "dist/index.js"
     },
     "files": [
         "dist",
@@ -23,11 +23,11 @@
         "prebuild": "npm run clean",
         "prepublishOnly": "npm run build",
         "start": "node dist/index.js",
-        "docker": "docker build -t waldzellai/server-glassbead-thinks ."
+        "docker": "docker build -t waldzellai/clear-thought ."
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/waldzellai/mcp-servers.git"
+        "url": "https://github.com/waldzellai/clear-thought.git"
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.5.0",

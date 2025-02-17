@@ -9,7 +9,7 @@
     "build": "npm run build --workspaces",
     "clean": "npm run clean --workspaces",
     "test": "npm run test --workspaces",
-    "docker": "npm run docker --workspace @waldzellai/server-glassbead-thinks"
+    "docker": "npm run docker --workspace @waldzellai/clear-thought"
   },
   "author": "waldzellai",
   "license": "MIT",

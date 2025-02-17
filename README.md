@@ -12,6 +12,8 @@ An MCP server providing advanced problem-solving capabilities through:
 - Mental models for structured problem decomposition
 - Systematic debugging approaches
 
+### [@waldzellai/clear-thought](packages/server-clear-thought)
+
 ## Development
 
 This is a monorepo using npm workspaces. To get started:

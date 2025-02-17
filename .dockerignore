@@ -49,3 +49,12 @@ CHANGELOG.md
 !packages/server-glassbead-thinks/README.md
 !packages/server-glassbead-thinks/src/
 !packages/server-glassbead-thinks/index.ts
+
+!packages/server-clear-thought/
+!packages/server-clear-thought/package.json
+!packages/server-clear-thought/package-lock.json
+!packages/server-clear-thought/tsconfig.json
+!packages/server-clear-thought/LICENSE
+!packages/server-clear-thought/README.md
+!packages/server-clear-thought/src/
+!packages/server-clear-thought/index.ts

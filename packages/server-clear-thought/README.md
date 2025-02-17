@@ -1,183 +1,194 @@
-# @waldzellai/server-glassbead-thinks
+# Clear Thought MCP Server
 
-An MCP server providing advanced problem-solving capabilities through sequential thinking, mental models, and debugging approaches.
-
-[![smithery badge](https://smithery.ai/badge/@waldzellai/mcp-servers)](https://smithery.ai/server/@waldzellai/mcp-servers)
-
-
-## Usage Options
-
-### 1. NPX (Recommended for Claude Desktop)
-```bash
-npx @waldzellai/server-glassbead-thinks
-```
-
-Add to Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
-```json
-{
-  "mcpServers": {
-    "glassbead-thinks": {
-      "command": "npx",
-      "args": ["@waldzellai/server-glassbead-thinks"],
-      "env": {}
-    }
-  }
-}
-```
-
-### 2. Docker
-```bash
-# Pull the image
-docker pull ghcr.io/waldzellai/server-glassbead-thinks
-
-# Run the container
-docker run -it --rm ghcr.io/waldzellai/server-glassbead-thinks
-```
-
-Add to Claude Desktop configuration:
-```json
-{
-  "mcpServers": {
-    "glassbead-thinks": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "ghcr.io/waldzellai/server-glassbead-thinks"
-      ],
-      "env": {}
-    }
-  }
-}
-```
-
-### 3. NPM Installation
-For use in your own projects:
-```bash
-npm install @waldzellai/server-glassbead-thinks
-```
+A Model Context Protocol (MCP) server that provides systematic thinking, mental models, and debugging approaches for enhanced problem-solving capabilities.
 
 ## Features
 
-### 1. Sequential Thinking
-- Dynamic thought progression
-- Revision capabilities
-- Branching thought paths
-- Progress tracking
-- Hypothesis generation and verification
-
-### 2. Mental Models
+### Mental Models
 - First Principles Thinking
 - Opportunity Cost Analysis
 - Error Propagation Understanding
 - Rubber Duck Debugging
 - Pareto Principle
 - Occam's Razor
+- And many more...
 
-### 3. Debugging Approaches
+### Design Patterns
+- Modular Architecture
+- API Integration Patterns
+- State Management
+- Asynchronous Processing
+- Scalability Considerations
+- Security Best Practices
+- Agentic Design Patterns
+
+Note: Compatible with various modern web frameworks and architectures.
+
+### Programming Paradigms
+- Imperative Programming
+- Procedural Programming
+- Object-Oriented Programming
+- Functional Programming
+- Declarative Programming
+- Logic Programming
+- Event-Driven Programming
+- Aspect-Oriented Programming
+- Concurrent Programming
+- Reactive Programming
+
+### Debugging Approaches
 - Binary Search
 - Reverse Engineering
 - Divide and Conquer
 - Backtracking
 - Cause Elimination
 - Program Slicing
+- Advanced debugging patterns
+
+### Sequential Thinking
+- Structured thought process
+- Revision and branching support
+- Progress tracking
+- Context maintenance
+
+## Tool Selection Guide
+
+Each tool in the Clear Thought MCP Server has specific strengths. Here are some scenarios where each tool might be particularly useful:
+
+### Mental Models
+Best suited for:
+- Initial problem understanding
+- Breaking down complex systems
+- Analyzing trade-offs
+- Finding root causes
+- Making strategic decisions
+
+Example scenarios:
+- Analyzing system architecture choices
+- Evaluating competing solutions
+- Understanding error patterns
+
+### Design Patterns
+Best suited for:
+- Implementing proven solutions
+- Structuring new features
+- Ensuring maintainable code
+- Scaling applications
+- Managing technical debt
+
+Example scenarios:
+- Building new system components
+- Refactoring existing code
+- Implementing cross-cutting concerns
+
+### Debugging Approaches
+Best suited for:
+- Troubleshooting issues
+- Performance optimization
+- System analysis
+- Error resolution
+- Quality assurance
+
+Example scenarios:
+- Fixing production issues
+- Optimizing slow processes
+- Resolving integration problems
+
+### Sequential Thinking
+Best suited for:
+- Complex problem-solving
+- Multi-step analysis
+- Decision refinement
+- Process improvement
+- Comprehensive planning
+
+Example scenarios:
+- Planning major features
+- Analyzing system-wide changes
+- Making architectural decisions
+
+Note: These are suggestions rather than rules. Tools can be used in any order or combination that best serves your needs.
+
+## Installation
+
+```bash
+npm install @waldzellai/clear-thought
+```
+
+Or run with npx:
+
+```bash
+npx @waldzellai/clear-thought
+```
 
 ## Usage
 
-### As an MCP Server
-
-```javascript
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-
-// The server will automatically register its tools
-const transport = new StdioServerTransport();
-await server.connect(transport);
-```
-
-### Available Tools
-
-1. `sequentialthinking`
+### Mental Models
 ```typescript
-interface ThoughtData {
-  thought: string;
-  thoughtNumber: number;
-  totalThoughts: number;
-  nextThoughtNeeded: boolean;
-  isRevision?: boolean;
-  revisesThought?: number;
-  branchFromThought?: number;
-  branchId?: string;
-  needsMoreThoughts?: boolean;
-}
+const response = await mcp.callTool("mentalmodel", {
+  modelName: "first_principles",
+  problem: "How to implement a new feature?",
+  steps: [
+    "Break down the problem",
+    "Analyze components",
+    "Build solution"
+  ]
+});
 ```
 
-2. `mentalmodel`
+### Debugging Approaches
 ```typescript
-interface MentalModelData {
-  modelName: string;
-  problem: string;
-  steps: string[];
-  reasoning: string;
-  conclusion: string;
-}
+const response = await mcp.callTool("debuggingapproach", {
+  approachName: "binary_search",
+  issue: "Performance degradation in the system",
+  steps: [
+    "Identify performance metrics",
+    "Locate bottleneck",
+    "Implement solution"
+  ]
+});
 ```
-
-3. `debuggingapproach`
-```typescript
-interface DebuggingApproachData {
-  approachName: string;
-  issue: string;
-  steps: string[];
-  findings: string;
-  resolution: string;
-}
-```
-
-## Tool Examples
 
 ### Sequential Thinking
-```javascript
-const result = await server.callTool("sequentialthinking", {
-  thought: "Breaking down the problem into components",
+```typescript
+const response = await mcp.callTool("sequentialthinking", {
+  thought: "Initial analysis of the problem",
   thoughtNumber: 1,
-  totalThoughts: 5,
+  totalThoughts: 3,
   nextThoughtNeeded: true
 });
 ```
 
-### Mental Model
-```javascript
-const result = await server.callTool("mentalmodel", {
-  modelName: "first_principles",
-  problem: "Optimize database queries",
-  steps: ["Identify core operations", "Analyze query patterns"],
-  reasoning: "Breaking down to fundamental operations",
-  conclusion: "Implement query caching"
-});
+## Docker
+
+Build the Docker image:
+
+```bash
+docker build -t waldzellai/clear-thought .
 ```
 
-### Debugging Approach
-```javascript
-const result = await server.callTool("debuggingapproach", {
-  approachName: "binary_search",
-  issue: "Performance degradation",
-  steps: ["Isolate timing", "Check midpoint", "Narrow search"],
-  findings: "Memory leak in loop",
-  resolution: "Fixed resource cleanup"
-});
+Run the container:
+
+```bash
+docker run -it waldzellai/clear-thought
 ```
 
-## Requirements
-- Node.js >= 18
-- ESM module support
+## Development
 
-## License
-MIT
-
-## Author
-waldzellai [fork of work by Anthropic, PBC (https://anthropic.com)]
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Build the project: `npm run build`
+4. Start the server: `npm start`
 
 ## Contributing
-Issues and pull requests welcome at https://github.com/modelcontextprotocol/servers/issues
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT License - see LICENSE for details.
+
+## Acknowledgments
+
+- Based on the Model Context Protocol (MCP) by Anthropic, and uses the code for the sequentialthinking server
+- Mental Models framework inspired by [James Clear's comprehensive guide to mental models](https://jamesclear.com/mental-models), which provides an excellent overview of how these thinking tools can enhance decision-making and problem-solving capabilities

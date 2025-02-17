@@ -1,7 +1,7 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
 build:
-  dockerfile: packages/server-glassbead-thinks/Dockerfile
+  dockerfile: packages/server-clear-thought/Dockerfile
 startCommand:
   type: stdio
   configSchema:

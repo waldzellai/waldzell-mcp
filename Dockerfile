@@ -28,6 +28,6 @@ USER node
 CMD ["node", "dist/index.js"]
 
 # Label the image
-LABEL org.opencontainers.image.source="https://github.com/glassBead-tc/server-glassBead-thinks"
+LABEL org.opencontainers.image.source="https://github.com/waldzellai/clear-thought"
 LABEL org.opencontainers.image.description="MCP server for sequential thinking, mental models, and debugging approaches"
 LABEL org.opencontainers.image.licenses="MIT"
