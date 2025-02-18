@@ -6,13 +6,11 @@ A collection of Model Context Protocol (MCP) servers providing various capabilit
 
 ## Packages
 
-### [@waldzellai/server-glassbead-thinks](packages/server-glassbead-thinks)
+### [@waldzellai/clear-thought](packages/server-clear-thought)
 An MCP server providing advanced problem-solving capabilities through:
 - Sequential thinking with dynamic thought evolution
 - Mental models for structured problem decomposition
 - Systematic debugging approaches
-
-### [@waldzellai/clear-thought](packages/server-clear-thought)
 
 ## Development
 
