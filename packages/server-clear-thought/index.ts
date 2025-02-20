@@ -485,7 +485,11 @@ const server = new Server(
   },
   {
     capabilities: {
-      tools: {},
+      tools: {
+        sequentialthinking: SEQUENTIAL_THINKING_TOOL,
+        mentalmodel: MENTAL_MODEL_TOOL,
+        debuggingapproach: DEBUGGING_APPROACH_TOOL
+      },
     },
   }
 );
