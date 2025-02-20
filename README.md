@@ -7,25 +7,20 @@ A collection of Model Context Protocol (MCP) servers providing various capabilit
 ## Packages
 
 ### [@waldzellai/clear-thought](packages/server-clear-thought)
-### [@waldzellai/clear-thought](packages/server-clear-thought)
 An MCP server providing advanced problem-solving capabilities through:
 - Sequential thinking with dynamic thought evolution
-<<<<<<< HEAD
 - Mental models for structured problem decomposition [from a list provided by James Clear's website](https://jamesclear.com/mental-models)
-=======
-- Mental models for structured problem decomposition (from a list provided by James Clear's website)[https://jamesclear.com/mental-models]
->>>>>>> upstream/main
 - Systematic debugging approaches
 
-# @waldzellai/mcp-servers
+### [@waldzellai/stochasticthinking](packages/server-stochasticthinking)
+An MCP server extending sequential thinking with advanced stochastic algorithms for better decision-making:
+- Markov Decision Processes (MDPs) for optimizing long-term decision sequences
+- Monte Carlo Tree Search (MCTS) for exploring large decision spaces
+- Multi-Armed Bandit Models for balancing exploration vs exploitation
+- Bayesian Optimization for decisions under uncertainty
+- Hidden Markov Models (HMMs) for inferring latent states
 
-[![smithery badge](https://smithery.ai/badge/@waldzellai/mcp-servers)](https://smithery.ai/server/@waldzellai/mcp-servers)
-
-A collection of Model Context Protocol (MCP) servers providing various capabilities for AI assistants, incl
-
-## Packages
-
-### [@waldzellai/server-glassbead-thinks](packages/server-glassbead-thinks)
+Helps AI assistants break out of local minima by considering multiple possible futures and strategically exploring alternative approaches.
 
 ## Development
 
