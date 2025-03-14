@@ -33,10 +33,19 @@
 - yelpBusinessDetails - Get business details by ID
 - yelpBusinessReviews - Get business reviews
 - yelpReviewHighlights - Get highlighted snippets from reviews
-- yelpCategories - Get all business categories
 - yelpEventsSearch - Search for events in a location
 - yelpEventDetails - Get detailed information about a specific event
 - yelpFeaturedEvent - Get the featured event for a location
+
+### Events Tools
+- yelpEventsSearch - Search for events in a location
+- yelpEventDetails - Get detailed information about a specific event
+- yelpFeaturedEvent - Get the featured event for a location
+
+### Categories Tools
+- yelpGetCategories - Get all business categories from Yelp
+- yelpGetCategoryDetails - Get detailed information about a specific category
+- yelpSearchCategories - Search for business categories by name
 
 ### Advertising Tools
 - yelpCreateAdProgram - Create a new advertising program
@@ -71,6 +80,18 @@
 - yelpCancelSubscription - Cancel a subscription
 - yelpGetSubscriptionUsage - Get subscription usage data
 - yelpGetSubscriptionHistory - Get subscription history
+
+### Checkout Tools
+- yelpGetPaymentMethods - Get a list of payment methods
+- yelpGetPaymentMethod - Get details for a specific payment method
+- yelpCreatePaymentMethod - Create a new payment method
+- yelpDeletePaymentMethod - Delete a payment method
+- yelpGetInvoices - Get a list of invoices
+- yelpGetInvoice - Get details for a specific invoice
+- yelpPayInvoice - Pay an invoice using a payment method
+- yelpGetPayments - Get a list of payments
+- yelpGetPayment - Get details for a specific payment
+- yelpRefundPayment - Request a refund for a payment
 
 ### Respond Reviews Tools
 - yelpRespondReviewsGetToken - Get an OAuth access token for responding to reviews

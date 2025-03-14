@@ -14,6 +14,23 @@ import {
   SubscriptionUsage,
   SubscriptionHistory
 } from './services/api/business-subscriptions';
+import {
+  Category,
+  CategoriesResponse
+} from './services/api/categories';
+import {
+  Event,
+  EventSearchResponse,
+  FeaturedEventResponse
+} from './services/api/events';
+import {
+  PaymentMethod,
+  PaymentMethodsResponse,
+  Invoice,
+  InvoicesResponse,
+  Payment,
+  PaymentsResponse
+} from './services/api/checkout';
 
 // Define our implementation
 const server = new McpServer({
@@ -30,10 +47,14 @@ const server = new McpServer({
   - yelpBusinessDetails: Get business details by ID
   - yelpBusinessReviews: Get business reviews
   - yelpReviewHighlights: Get highlighted snippets from reviews
-  - yelpCategories: Get all business categories
   - yelpEventsSearch: Search for events in a location
   - yelpEventDetails: Get detailed information about a specific event
   - yelpFeaturedEvent: Get the featured event for a location
+  
+  Categories Tools:
+  - yelpGetCategories: Get all business categories from Yelp
+  - yelpGetCategoryDetails: Get detailed information about a specific category
+  - yelpSearchCategories: Search for business categories by name
   
   Advertising Tools:
   - yelpCreateAdProgram: Create a new advertising program
@@ -53,6 +74,18 @@ const server = new McpServer({
   - yelpCancelSubscription: Cancel a subscription
   - yelpGetSubscriptionUsage: Get subscription usage data
   - yelpGetSubscriptionHistory: Get subscription history
+  
+  Checkout Tools:
+  - yelpGetPaymentMethods: Get a list of payment methods
+  - yelpGetPaymentMethod: Get details for a specific payment method
+  - yelpCreatePaymentMethod: Create a new payment method
+  - yelpDeletePaymentMethod: Delete a payment method
+  - yelpGetInvoices: Get a list of invoices
+  - yelpGetInvoice: Get details for a specific invoice
+  - yelpPayInvoice: Pay an invoice using a payment method
+  - yelpGetPayments: Get a list of payments
+  - yelpGetPayment: Get details for a specific payment
+  - yelpRefundPayment: Request a refund for a payment
   
   OAuth Tools:
   - yelpGetOAuthToken: Get an OAuth access token (v2 or v3)
@@ -77,6 +110,209 @@ const server = new McpServer({
   `,
   
   tools: {
+    // Categories Tools
+    yelpGetCategories: {
+      description: "Get all business categories from Yelp",
+      schema: z.object({
+        locale: z.string().optional().describe('Optional locale parameter (e.g., "en_US")'),
+        country: z.string().optional().describe('Optional country code parameter (e.g., "US")'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.categories.getAll(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatCategoriesResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting categories: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetCategoryDetails: {
+      description: "Get detailed information about a specific business category",
+      schema: z.object({
+        alias: z.string().describe('The category alias/slug (e.g., "restaurants", "italian")'),
+        locale: z.string().optional().describe('Optional locale parameter (e.g., "en_US")'),
+        country: z.string().optional().describe('Optional country code parameter (e.g., "US")'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const { alias, ...params } = args;
+          const response = await yelpService.categories.getCategory(alias, params);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatCategoryDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting category details: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpSearchCategories: {
+      description: "Search for business categories by name",
+      schema: z.object({
+        term: z.string().describe('The search term to match against category titles'),
+        locale: z.string().optional().describe('Optional locale parameter (e.g., "en_US")'),
+        country: z.string().optional().describe('Optional country code parameter (e.g., "US")'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const { term, ...params } = args;
+          const response = await yelpService.categories.searchCategories(term, params);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatCategoriesResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error searching categories: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    // Events Tools
+    yelpEventsSearch: {
+      description: "Search for events in a location",
+      schema: z.object({
+        location: z.string().optional().describe('Location string (e.g., address, city, state)'),
+        latitude: z.number().optional().describe('Latitude coordinate'),
+        longitude: z.number().optional().describe('Longitude coordinate'),
+        radius: z.number().optional().describe('Search radius in meters (max: 40000)'),
+        categories: z.string().optional().describe('Categories to filter by (comma-separated)'),
+        start_date: z.number().optional().describe('Start date (Unix timestamp)'),
+        end_date: z.number().optional().describe('End date (Unix timestamp)'),
+        is_free: z.boolean().optional().describe('Whether the event is free'),
+        limit: z.number().optional().describe('Maximum number of results to return (default: 20, max: 50)'),
+        offset: z.number().optional().describe('Offset for pagination'),
+        sort_by: z.enum(['popularity', 'time_start']).optional().describe('Sorting mode: popularity or time_start'),
+        locale: z.string().optional().describe('Locale (default: en_US)'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.events.search(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatEventSearchResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error searching events: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpEventDetails: {
+      description: "Get detailed information about a specific event",
+      schema: z.object({
+        event_id: z.string().describe('The ID of the event'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.events.getEvent(args.event_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatEventDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting event details: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpFeaturedEvent: {
+      description: "Get the featured event for a location",
+      schema: z.object({
+        location: z.string().optional().describe('Location string (e.g., address, city, state)'),
+        latitude: z.number().optional().describe('Latitude coordinate'),
+        longitude: z.number().optional().describe('Longitude coordinate'),
+        locale: z.string().optional().describe('Locale (default: en_US)'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.events.getFeaturedEvent(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatFeaturedEventResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting featured event: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
     // Business Subscriptions Tools
     yelpGetSubscriptionPlans: {
       description: "Get available subscription plans",
@@ -293,6 +529,340 @@ const server = new McpServer({
               {
                 type: 'text',
                 text: `Error getting subscription history: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    // Checkout Tools
+    yelpGetPaymentMethods: {
+      description: "Get a list of payment methods",
+      schema: z.object({
+        business_id: z.string().optional().describe('Optional business ID to filter by'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getPaymentMethods(args.business_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentMethodsResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting payment methods: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetPaymentMethod: {
+      description: "Get details for a specific payment method",
+      schema: z.object({
+        payment_method_id: z.string().describe('Payment method ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getPaymentMethod(args.payment_method_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentMethodDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting payment method: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpCreatePaymentMethod: {
+      description: "Create a new payment method",
+      schema: z.object({
+        payment_token: z.string().describe('Payment token from the payment processor'),
+        set_default: z.boolean().optional().describe('Set as default payment method'),
+        business_id: z.string().optional().describe('Business ID to associate with'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const request = {
+            payment_token: args.payment_token,
+            set_default: args.set_default,
+            business_id: args.business_id
+          };
+          
+          const response = await yelpService.checkout.createPaymentMethod(request);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentMethodDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error creating payment method: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpDeletePaymentMethod: {
+      description: "Delete a payment method",
+      schema: z.object({
+        payment_method_id: z.string().describe('Payment method ID to delete'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.deletePaymentMethod(args.payment_method_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Payment method deletion status: ${response.success ? 'Successful' : 'Failed'}`
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error deleting payment method: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetInvoices: {
+      description: "Get a list of invoices",
+      schema: z.object({
+        business_id: z.string().optional().describe('Business ID to filter by'),
+        subscription_id: z.string().optional().describe('Subscription ID to filter by'),
+        limit: z.number().optional().describe('Number of results to return (max 50)'),
+        offset: z.number().optional().describe('Offset the list of returned results by this amount'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getInvoices(
+            args.business_id,
+            args.subscription_id,
+            args.limit,
+            args.offset
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatInvoicesResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting invoices: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetInvoice: {
+      description: "Get details for a specific invoice",
+      schema: z.object({
+        invoice_id: z.string().describe('Invoice ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getInvoice(args.invoice_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatInvoiceDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting invoice: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpPayInvoice: {
+      description: "Pay an invoice using a payment method",
+      schema: z.object({
+        invoice_id: z.string().describe('Invoice ID to pay'),
+        payment_method_id: z.string().describe('Payment method ID to use'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.payInvoice(args.invoice_id, args.payment_method_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error paying invoice: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetPayments: {
+      description: "Get a list of payments",
+      schema: z.object({
+        business_id: z.string().optional().describe('Business ID to filter by'),
+        subscription_id: z.string().optional().describe('Subscription ID to filter by'),
+        invoice_id: z.string().optional().describe('Invoice ID to filter by'),
+        limit: z.number().optional().describe('Number of results to return (max 50)'),
+        offset: z.number().optional().describe('Offset the list of returned results by this amount'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getPayments(
+            args.business_id,
+            args.subscription_id,
+            args.invoice_id,
+            args.limit,
+            args.offset
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentsResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting payments: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetPayment: {
+      description: "Get details for a specific payment",
+      schema: z.object({
+        payment_id: z.string().describe('Payment ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getPayment(args.payment_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting payment: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpRefundPayment: {
+      description: "Request a refund for a payment",
+      schema: z.object({
+        payment_id: z.string().describe('Payment ID to refund'),
+        amount_cents: z.number().optional().describe('Amount to refund in cents (default: full amount)'),
+        reason: z.string().optional().describe('Reason for the refund'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.refundPayment(
+            args.payment_id,
+            args.amount_cents,
+            args.reason
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error refunding payment: ${(error as Error).message}`
               }
             ]
           };
@@ -704,6 +1274,608 @@ function formatEventType(eventType: string): string {
     default:
       return eventType.charAt(0).toUpperCase() + eventType.slice(1);
   }
+}
+
+/**
+ * Format categories response
+ */
+function formatCategoriesResponse(response: CategoriesResponse): string {
+  let formattedResponse = '## Yelp Business Categories\n\n';
+  
+  if (response.categories.length === 0) {
+    formattedResponse += 'No categories found.\n';
+    return formattedResponse;
+  }
+  
+  formattedResponse += `Found ${response.categories.length} categories.\n\n`;
+  
+  // Group categories by parent
+  const topLevelCategories = response.categories.filter(cat => !cat.parent_aliases || cat.parent_aliases.length === 0);
+  const childCategories = response.categories.filter(cat => cat.parent_aliases && cat.parent_aliases.length > 0);
+  
+  // List top-level categories first
+  if (topLevelCategories.length > 0) {
+    formattedResponse += '### Top-Level Categories\n\n';
+    topLevelCategories.forEach(cat => {
+      formattedResponse += `- ${cat.title} (${cat.alias})\n`;
+    });
+    formattedResponse += '\n';
+  }
+  
+  // Then categorize others by their first parent
+  if (childCategories.length > 0) {
+    formattedResponse += '### Sub-Categories\n\n';
+    
+    // Group by first parent
+    const groupedByParent: Record<string, Category[]> = {};
+    childCategories.forEach(cat => {
+      if (cat.parent_aliases && cat.parent_aliases.length > 0) {
+        const parentAlias = cat.parent_aliases[0];
+        if (!groupedByParent[parentAlias]) {
+          groupedByParent[parentAlias] = [];
+        }
+        groupedByParent[parentAlias].push(cat);
+      }
+    });
+    
+    // Output each group
+    Object.keys(groupedByParent).sort().forEach(parentAlias => {
+      const parentTitle = response.categories.find(c => c.alias === parentAlias)?.title || parentAlias;
+      formattedResponse += `**${parentTitle}**\n`;
+      
+      groupedByParent[parentAlias].sort((a, b) => a.title.localeCompare(b.title)).forEach(cat => {
+        formattedResponse += `- ${cat.title} (${cat.alias})\n`;
+      });
+      
+      formattedResponse += '\n';
+    });
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format category details response
+ */
+function formatCategoryDetails(category: Category): string {
+  let formattedResponse = `## Category: ${category.title}\n\n`;
+  
+  formattedResponse += `Alias: ${category.alias}\n\n`;
+  
+  if (category.parent_aliases && category.parent_aliases.length > 0) {
+    formattedResponse += '### Parent Categories\n';
+    for (let i = 0; i < category.parent_aliases.length; i++) {
+      const parentAlias = category.parent_aliases[i];
+      const parentTitle = category.parent_titles?.[i] || parentAlias;
+      formattedResponse += `- ${parentTitle} (${parentAlias})\n`;
+    }
+    formattedResponse += '\n';
+  }
+  
+  if (category.country_whitelist && category.country_whitelist.length > 0) {
+    formattedResponse += '### Available In\n';
+    formattedResponse += category.country_whitelist.join(', ') + '\n\n';
+  }
+  
+  if (category.country_blacklist && category.country_blacklist.length > 0) {
+    formattedResponse += '### Not Available In\n';
+    formattedResponse += category.country_blacklist.join(', ') + '\n\n';
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format event search response
+ */
+function formatEventSearchResponse(response: EventSearchResponse): string {
+  let formattedResponse = '## Yelp Events\n\n';
+  
+  if (response.total !== undefined) {
+    formattedResponse += `Found ${response.total} events.\n\n`;
+  }
+  
+  if (response.events.length === 0) {
+    formattedResponse += 'No events found matching your criteria.\n';
+    return formattedResponse;
+  }
+  
+  response.events.forEach((event, index) => {
+    formattedResponse += `### ${index + 1}. ${event.name}\n`;
+    
+    if (event.description) {
+      formattedResponse += `${event.description.substring(0, 150)}${event.description.length > 150 ? '...' : ''}\n\n`;
+    }
+    
+    if (event.time_start) {
+      const startDate = new Date(event.time_start).toLocaleString();
+      formattedResponse += `**When**: ${startDate}`;
+      
+      if (event.time_end) {
+        const endDate = new Date(event.time_end).toLocaleString();
+        formattedResponse += ` to ${endDate}`;
+      }
+      
+      formattedResponse += '\n';
+    }
+    
+    if (event.location && event.location.display_address) {
+      formattedResponse += `**Where**: ${event.location.display_address.join(', ')}\n`;
+    }
+    
+    if (event.is_free !== undefined) {
+      formattedResponse += `**Cost**: ${event.is_free ? 'Free' : (event.cost ? '$' + event.cost : 'Paid')}\n`;
+    }
+    
+    if (event.category) {
+      formattedResponse += `**Category**: ${event.category}\n`;
+    }
+    
+    if (event.attending_count) {
+      formattedResponse += `**Attending**: ${event.attending_count} people\n`;
+    }
+    
+    if (event.url) {
+      formattedResponse += `**Details**: ${event.url}\n`;
+    }
+    
+    formattedResponse += '\n';
+  });
+  
+  return formattedResponse;
+}
+
+/**
+ * Format event details response
+ */
+function formatEventDetails(event: Event): string {
+  let formattedResponse = `## ${event.name}\n\n`;
+  
+  if (event.description) {
+    formattedResponse += `${event.description}\n\n`;
+  }
+  
+  formattedResponse += '### Event Details\n\n';
+  
+  if (event.time_start) {
+    const startDate = new Date(event.time_start).toLocaleString();
+    formattedResponse += `**Date**: ${startDate}`;
+    
+    if (event.time_end) {
+      const endDate = new Date(event.time_end).toLocaleString();
+      formattedResponse += ` to ${endDate}`;
+    }
+    
+    formattedResponse += '\n';
+  }
+  
+  if (event.location) {
+    formattedResponse += '**Location**: ';
+    if (event.location.display_address) {
+      formattedResponse += event.location.display_address.join(', ');
+    } else {
+      const addressParts = [];
+      if (event.location.address1) addressParts.push(event.location.address1);
+      if (event.location.address2) addressParts.push(event.location.address2);
+      if (event.location.address3) addressParts.push(event.location.address3);
+      
+      if (event.location.city) {
+        const cityStateParts = [event.location.city];
+        if (event.location.state) cityStateParts.push(event.location.state);
+        if (event.location.zip_code) cityStateParts.push(event.location.zip_code);
+        addressParts.push(cityStateParts.join(', '));
+      }
+      
+      if (event.location.country) addressParts.push(event.location.country);
+      
+      formattedResponse += addressParts.join(', ');
+    }
+    formattedResponse += '\n';
+  }
+  
+  if (event.is_free !== undefined) {
+    formattedResponse += `**Cost**: ${event.is_free ? 'Free' : (event.cost ? '$' + event.cost : 'Paid')}\n`;
+  }
+  
+  if (event.category) {
+    formattedResponse += `**Category**: ${event.category}\n`;
+  }
+  
+  if (event.business_id) {
+    formattedResponse += `**Hosted by**: Business ID ${event.business_id}\n`;
+  }
+  
+  formattedResponse += '\n### Attendance\n\n';
+  
+  if (event.attending_count !== undefined) {
+    formattedResponse += `**Going**: ${event.attending_count} people\n`;
+  }
+  
+  if (event.interested_count !== undefined) {
+    formattedResponse += `**Interested**: ${event.interested_count} people\n`;
+  }
+  
+  formattedResponse += '\n';
+  
+  if (event.tickets_url) {
+    formattedResponse += `**Tickets**: ${event.tickets_url}\n\n`;
+  }
+  
+  if (event.url) {
+    formattedResponse += `**Event page**: ${event.url}\n\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format featured event response
+ */
+function formatFeaturedEventResponse(response: FeaturedEventResponse): string {
+  let formattedResponse = '## Featured Event\n\n';
+  formattedResponse += formatEventDetails(response.featured_event);
+  return formattedResponse;
+}
+
+/**
+ * Format payment methods response
+ */
+function formatPaymentMethodsResponse(response: PaymentMethodsResponse): string {
+  let formattedResponse = '## Payment Methods\n\n';
+  
+  if (response.total !== undefined) {
+    formattedResponse += `Total: ${response.total} payment methods\n\n`;
+  }
+  
+  if (response.payment_methods.length === 0) {
+    formattedResponse += 'No payment methods found.\n';
+    return formattedResponse;
+  }
+  
+  response.payment_methods.forEach((method, index) => {
+    formattedResponse += `### ${index + 1}. Payment Method\n`;
+    formattedResponse += `ID: ${method.payment_method_id}\n`;
+    formattedResponse += `Type: ${method.type}\n`;
+    formattedResponse += `Status: ${method.status}\n`;
+    formattedResponse += `Default: ${method.is_default ? 'Yes' : 'No'}\n`;
+    
+    if (method.card_details) {
+      formattedResponse += `Card: ${method.card_details.brand} ending in ${method.card_details.last4}\n`;
+      formattedResponse += `Expires: ${method.card_details.exp_month}/${method.card_details.exp_year}\n`;
+    }
+    
+    const createdDate = new Date(method.created_at).toLocaleDateString();
+    formattedResponse += `Created: ${createdDate}\n\n`;
+  });
+  
+  return formattedResponse;
+}
+
+/**
+ * Format payment method details
+ */
+function formatPaymentMethodDetails(method: PaymentMethod): string {
+  let formattedResponse = '## Payment Method Details\n\n';
+  
+  formattedResponse += `ID: ${method.payment_method_id}\n`;
+  formattedResponse += `Type: ${method.type}\n`;
+  formattedResponse += `Status: ${method.status}\n`;
+  formattedResponse += `Default: ${method.is_default ? 'Yes' : 'No'}\n`;
+  
+  if (method.card_details) {
+    formattedResponse += '\n### Card Details\n\n';
+    formattedResponse += `Brand: ${method.card_details.brand}\n`;
+    formattedResponse += `Last 4 Digits: ${method.card_details.last4}\n`;
+    formattedResponse += `Expiration: ${method.card_details.exp_month}/${method.card_details.exp_year}\n`;
+  }
+  
+  const createdDate = new Date(method.created_at).toLocaleDateString();
+  const updatedDate = new Date(method.updated_at).toLocaleDateString();
+  
+  formattedResponse += '\n### Dates\n\n';
+  formattedResponse += `Created: ${createdDate}\n`;
+  formattedResponse += `Last Updated: ${updatedDate}\n`;
+  
+  return formattedResponse;
+}
+
+/**
+ * Format invoices response
+ */
+function formatInvoicesResponse(response: InvoicesResponse): string {
+  let formattedResponse = '## Invoices\n\n';
+  
+  if (response.total !== undefined) {
+    formattedResponse += `Total: ${response.total} invoices\n\n`;
+  }
+  
+  if (response.invoices.length === 0) {
+    formattedResponse += 'No invoices found.\n';
+    return formattedResponse;
+  }
+  
+  formattedResponse += '| Invoice # | Date | Amount | Status |\n';
+  formattedResponse += '| --------- | ---- | ------ | ------ |\n';
+  
+  response.invoices.forEach(invoice => {
+    const issueDate = new Date(invoice.issue_date).toLocaleDateString();
+    const amount = `$${(invoice.amount_cents / 100).toFixed(2)}`;
+    const status = invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
+    formattedResponse += `| [${invoice.invoice_number}](${invoice.portal_url || '#'}) | ${issueDate} | ${amount} | ${status} |\n`;
+  });
+  
+  formattedResponse += '\nClick on an invoice number to view details.\n';
+  
+  return formattedResponse;
+}
+
+/**
+ * Format invoice details
+ */
+function formatInvoiceDetails(invoice: Invoice): string {
+  let formattedResponse = `## Invoice #${invoice.invoice_number}\n\n`;
+  
+  formattedResponse += `ID: ${invoice.invoice_id}\n`;
+  
+  if (invoice.business_id) {
+    formattedResponse += `Business ID: ${invoice.business_id}\n`;
+  }
+  
+  if (invoice.subscription_id) {
+    formattedResponse += `Subscription ID: ${invoice.subscription_id}\n`;
+  }
+  
+  formattedResponse += `Amount: $${(invoice.amount_cents / 100).toFixed(2)} ${invoice.currency}\n`;
+  formattedResponse += `Status: ${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}\n`;
+  
+  const issueDate = new Date(invoice.issue_date).toLocaleDateString();
+  const dueDate = new Date(invoice.due_date).toLocaleDateString();
+  
+  formattedResponse += `Issue Date: ${issueDate}\n`;
+  formattedResponse += `Due Date: ${dueDate}\n`;
+  
+  if (invoice.payment_date) {
+    const paymentDate = new Date(invoice.payment_date).toLocaleDateString();
+    formattedResponse += `Payment Date: ${paymentDate}\n`;
+  }
+  
+  if (invoice.line_items && invoice.line_items.length > 0) {
+    formattedResponse += '\n### Line Items\n\n';
+    formattedResponse += '| Description | Type | Quantity | Amount |\n';
+    formattedResponse += '| ----------- | ---- | -------- | ------ |\n';
+    
+    invoice.line_items.forEach(item => {
+      const type = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+      const amount = `$${(item.amount_cents / 100).toFixed(2)}`;
+      formattedResponse += `| ${item.description} | ${type} | ${item.quantity} | ${amount} |\n`;
+    });
+  }
+  
+  if (invoice.pdf_url) {
+    formattedResponse += `\n[Download PDF Invoice](${invoice.pdf_url})\n`;
+  }
+  
+  if (invoice.portal_url) {
+    formattedResponse += `\n[View in Portal](${invoice.portal_url})\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format payments response
+ */
+function formatPaymentsResponse(response: PaymentsResponse): string {
+  let formattedResponse = '## Payments\n\n';
+  
+  if (response.total !== undefined) {
+    formattedResponse += `Total: ${response.total} payments\n\n`;
+  }
+  
+  if (response.payments.length === 0) {
+    formattedResponse += 'No payments found.\n';
+    return formattedResponse;
+  }
+  
+  formattedResponse += '| Date | Amount | Status | Invoice # |\n';
+  formattedResponse += '| ---- | ------ | ------ | --------- |\n';
+  
+  response.payments.forEach(payment => {
+    const paymentDate = new Date(payment.payment_date).toLocaleDateString();
+    const amount = `$${(payment.amount_cents / 100).toFixed(2)}`;
+    const status = payment.status.charAt(0).toUpperCase() + payment.status.slice(1);
+    formattedResponse += `| ${paymentDate} | ${amount} | ${status} | ${payment.invoice_id} |\n`;
+  });
+  
+  return formattedResponse;
+}
+
+/**
+ * Format payment details
+ */
+function formatPaymentDetails(payment: Payment): string {
+  let formattedResponse = '## Payment Details\n\n';
+  
+  formattedResponse += `Payment ID: ${payment.payment_id}\n`;
+  formattedResponse += `Invoice ID: ${payment.invoice_id}\n`;
+  
+  if (payment.business_id) {
+    formattedResponse += `Business ID: ${payment.business_id}\n`;
+  }
+  
+  if (payment.subscription_id) {
+    formattedResponse += `Subscription ID: ${payment.subscription_id}\n`;
+  }
+  
+  formattedResponse += `Amount: $${(payment.amount_cents / 100).toFixed(2)} ${payment.currency}\n`;
+  formattedResponse += `Status: ${payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}\n`;
+  formattedResponse += `Payment Method ID: ${payment.payment_method_id}\n`;
+  
+  const paymentDate = new Date(payment.payment_date).toLocaleDateString();
+  formattedResponse += `Payment Date: ${paymentDate}\n`;
+  
+  if (payment.failure_reason) {
+    formattedResponse += `\n### Failure Details\n\nReason: ${payment.failure_reason}\n`;
+  }
+  
+  if (payment.receipt_url) {
+    formattedResponse += `\n[View Receipt](${payment.receipt_url})\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format event search response
+ */
+function formatEventSearchResponse(response: EventSearchResponse): string {
+  let formattedResponse = '## Yelp Events\n\n';
+  
+  if (response.total !== undefined) {
+    formattedResponse += `Found ${response.total} events.\n\n`;
+  }
+  
+  if (response.events.length === 0) {
+    formattedResponse += 'No events found matching your criteria.\n';
+    return formattedResponse;
+  }
+  
+  response.events.forEach((event, index) => {
+    formattedResponse += `### ${index + 1}. ${event.name}\n`;
+    
+    if (event.description) {
+      formattedResponse += `${event.description.substring(0, 150)}${event.description.length > 150 ? '...' : ''}\n\n`;
+    }
+    
+    if (event.time_start) {
+      const startDate = new Date(event.time_start).toLocaleString();
+      formattedResponse += `**When**: ${startDate}`;
+      
+      if (event.time_end) {
+        const endDate = new Date(event.time_end).toLocaleString();
+        formattedResponse += ` to ${endDate}`;
+      }
+      
+      formattedResponse += '\n';
+    }
+    
+    if (event.location && event.location.display_address) {
+      formattedResponse += `**Where**: ${event.location.display_address.join(', ')}\n`;
+    }
+    
+    if (event.is_free !== undefined) {
+      formattedResponse += `**Cost**: ${event.is_free ? 'Free' : (event.cost ? '$' + event.cost : 'Paid')}\n`;
+    }' + event.cost : 'Paid'}\n`;
+    }
+    
+    if (event.category) {
+      formattedResponse += `**Category**: ${event.category}\n`;
+    }
+    
+    if (event.attending_count) {
+      formattedResponse += `**Attending**: ${event.attending_count} people\n`;
+    }
+    
+    if (event.url) {
+      formattedResponse += `**Details**: ${event.url}\n`;
+    }
+    
+    formattedResponse += '\n';
+  });
+  
+  return formattedResponse;
+}
+
+/**
+ * Format event details response
+ */
+function formatEventDetails(event: Event): string {
+  let formattedResponse = `## ${event.name}\n\n`;
+  
+  if (event.description) {
+    formattedResponse += `${event.description}\n\n`;
+  }
+  
+  formattedResponse += '### Event Details\n\n';
+  
+  if (event.time_start) {
+    const startDate = new Date(event.time_start).toLocaleString();
+    formattedResponse += `**Date**: ${startDate}`;
+    
+    if (event.time_end) {
+      const endDate = new Date(event.time_end).toLocaleString();
+      formattedResponse += ` to ${endDate}`;
+    }
+    
+    formattedResponse += '\n';
+  }
+  
+  if (event.location) {
+    formattedResponse += '**Location**: ';
+    if (event.location.display_address) {
+      formattedResponse += event.location.display_address.join(', ');
+    } else {
+      const addressParts = [];
+      if (event.location.address1) addressParts.push(event.location.address1);
+      if (event.location.address2) addressParts.push(event.location.address2);
+      if (event.location.address3) addressParts.push(event.location.address3);
+      
+      if (event.location.city) {
+        const cityStateParts = [event.location.city];
+        if (event.location.state) cityStateParts.push(event.location.state);
+        if (event.location.zip_code) cityStateParts.push(event.location.zip_code);
+        addressParts.push(cityStateParts.join(', '));
+      }
+      
+      if (event.location.country) addressParts.push(event.location.country);
+      
+      formattedResponse += addressParts.join(', ');
+    }
+    formattedResponse += '\n';
+  }
+  
+  if (event.is_free !== undefined) {
+    formattedResponse += `**Cost**: ${event.is_free ? 'Free' : event.cost ? '$' + event.cost : 'Paid'}\n`;
+  }
+  
+  if (event.category) {
+    formattedResponse += `**Category**: ${event.category}\n`;
+  }
+  
+  if (event.business_id) {
+    formattedResponse += `**Hosted by**: Business ID ${event.business_id}\n`;
+  }
+  
+  formattedResponse += '\n### Attendance\n\n';
+  
+  if (event.attending_count !== undefined) {
+    formattedResponse += `**Going**: ${event.attending_count} people\n`;
+  }
+  
+  if (event.interested_count !== undefined) {
+    formattedResponse += `**Interested**: ${event.interested_count} people\n`;
+  }
+  
+  formattedResponse += '\n';
+  
+  if (event.tickets_url) {
+    formattedResponse += `**Tickets**: ${event.tickets_url}\n\n`;
+  }
+  
+  if (event.url) {
+    formattedResponse += `**Event page**: ${event.url}\n\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format featured event response
+ */
+function formatFeaturedEventResponse(response: FeaturedEventResponse): string {
+  let formattedResponse = '## Featured Event\n\n';
+  formattedResponse += formatEventDetails(response.featured_event);
+  return formattedResponse;
 }
 
 // Start the server using stdio transport
