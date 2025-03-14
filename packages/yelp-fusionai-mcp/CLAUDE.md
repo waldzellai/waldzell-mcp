@@ -63,6 +63,15 @@
 - yelpCancelWaitlistVisit - Cancel a waitlist visit
 - yelpWaitlistVisitDetails - Get details about a waitlist visit
 
+### Business Subscriptions Tools
+- yelpGetSubscriptionPlans - Get available subscription plans
+- yelpGetActiveSubscription - Get active subscription for a business
+- yelpCreateSubscription - Create a new subscription
+- yelpUpdateSubscription - Update an existing subscription
+- yelpCancelSubscription - Cancel a subscription
+- yelpGetSubscriptionUsage - Get subscription usage data
+- yelpGetSubscriptionHistory - Get subscription history
+
 ### Respond Reviews Tools
 - yelpRespondReviewsGetToken - Get an OAuth access token for responding to reviews
 - yelpRespondReviewsBusinesses - Get businesses that the user can respond to reviews for

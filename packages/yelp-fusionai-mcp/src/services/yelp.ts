@@ -8,6 +8,7 @@ import oauthClient from './api/oauth';
 import waitlistPartnerClient from './api/waitlist-partner';
 import respondReviewsClient from './api/respond-reviews';
 import reportingV2Client from './api/reporting-v2';
+import businessSubscriptionsClient from './api/business-subscriptions';
 
 /**
  * Yelp AI Response interface
@@ -87,6 +88,11 @@ class YelpService {
    * Reporting V2 API client
    */
   readonly reportingV2 = reportingV2Client;
+  
+  /**
+   * Business Subscriptions API client
+   */
+  readonly businessSubscriptions = businessSubscriptionsClient;
 }
 
 export default new YelpService();
