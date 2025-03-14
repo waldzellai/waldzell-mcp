@@ -100,6 +100,22 @@
 - yelpVerifyClaimCode - Submit verification code for a claim
 - yelpCancelClaim - Cancel a pending business claim
 
+### User Management Tools
+- yelpGetUserProfile - Get the current user's profile
+- yelpGetUserById - Get a user profile by ID
+- yelpUpdateUserProfile - Update the current user's profile
+- yelpGetUserPreferences - Get the current user's preferences
+- yelpUpdateUserPreferences - Update the current user's preferences
+- yelpGetFriends - Get a user's friends
+- yelpGetUserCollections - Get a user's collections
+- yelpGetCollectionDetails - Get details for a specific collection
+- yelpCreateCollection - Create a new collection
+- yelpUpdateCollection - Update an existing collection
+- yelpDeleteCollection - Delete a collection
+- yelpGetCollectionItems - Get items in a collection
+- yelpAddBusinessToCollection - Add a business to a collection
+- yelpRemoveBusinessFromCollection - Remove a business from a collection
+
 ### Respond Reviews Tools
 - yelpRespondReviewsGetToken - Get an OAuth access token for responding to reviews
 - yelpRespondReviewsBusinesses - Get businesses that the user can respond to reviews for

@@ -38,6 +38,14 @@ import {
   VerificationResponse,
   DocumentUploadResponse
 } from './services/api/claim-business';
+import {
+  UserProfile,
+  UserPreferences,
+  FriendsResponse,
+  Collection,
+  CollectionsResponse,
+  CollectionItemsResponse
+} from './services/api/user-management';
 
 // Define our implementation
 const server = new McpServer({
@@ -100,6 +108,22 @@ const server = new McpServer({
   - yelpGetClaimStatus: Get the status of a business claim
   - yelpVerifyClaimCode: Submit verification code for a claim
   - yelpCancelClaim: Cancel a pending business claim
+  
+  User Management Tools:
+  - yelpGetUserProfile: Get the current user's profile
+  - yelpGetUserById: Get a user profile by ID
+  - yelpUpdateUserProfile: Update the current user's profile
+  - yelpGetUserPreferences: Get the current user's preferences
+  - yelpUpdateUserPreferences: Update the current user's preferences
+  - yelpGetFriends: Get a user's friends
+  - yelpGetUserCollections: Get a user's collections
+  - yelpGetCollectionDetails: Get details for a specific collection
+  - yelpCreateCollection: Create a new collection
+  - yelpUpdateCollection: Update an existing collection
+  - yelpDeleteCollection: Delete a collection
+  - yelpGetCollectionItems: Get items in a collection
+  - yelpAddBusinessToCollection: Add a business to a collection
+  - yelpRemoveBusinessFromCollection: Remove a business from a collection
   
   OAuth Tools:
   - yelpGetOAuthToken: Get an OAuth access token (v2 or v3)
@@ -1036,6 +1060,533 @@ const server = new McpServer({
               {
                 type: 'text',
                 text: `Error canceling claim: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    // User Management Tools
+    yelpGetUserProfile: {
+      description: "Get the current user's profile",
+      schema: z.object({}),
+      async (): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.getCurrentUserProfile();
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatUserProfileResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting user profile: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetUserById: {
+      description: "Get a user profile by ID",
+      schema: z.object({
+        user_id: z.string().describe('User ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.getUserProfile(args.user_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatUserProfileResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting user profile: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpUpdateUserProfile: {
+      description: "Update the current user's profile",
+      schema: z.object({
+        name: z.string().optional().describe('New display name'),
+        city: z.string().optional().describe('City name'),
+        state_code: z.string().optional().describe('State/province code'),
+        country_code: z.string().optional().describe('Country code'),
+        zip_code: z.string().optional().describe('ZIP/postal code'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const updates: any = {};
+          
+          if (args.name) {
+            updates.name = args.name;
+          }
+          
+          if (args.city || args.state_code || args.country_code || args.zip_code) {
+            updates.location = {
+              city: args.city || '',
+              state_code: args.state_code,
+              country_code: args.country_code,
+              zip_code: args.zip_code
+            };
+          }
+          
+          const response = await yelpService.userManagement.updateUserProfile(updates);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatUserProfileResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error updating user profile: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetUserPreferences: {
+      description: "Get the current user's preferences",
+      schema: z.object({}),
+      async (): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.getUserPreferences();
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatUserPreferencesResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting user preferences: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpUpdateUserPreferences: {
+      description: "Update the current user's preferences",
+      schema: z.object({
+        language: z.string().optional().describe('Language code (e.g., "en_US")'),
+        currency: z.string().optional().describe('Currency code (e.g., "USD")'),
+        distance_unit: z.enum(['mi', 'km']).optional().describe('Distance unit (miles or kilometers)'),
+        default_location: z.string().optional().describe('Default location for searches'),
+        default_radius: z.number().optional().describe('Default search radius in meters'),
+        promotional_emails: z.boolean().optional().describe('Receive promotional emails'),
+        friend_activity_emails: z.boolean().optional().describe('Receive friend activity email notifications'),
+        review_comments_emails: z.boolean().optional().describe('Receive review comment email notifications'),
+        direct_messages_emails: z.boolean().optional().describe('Receive direct message email notifications'),
+        promotional_push: z.boolean().optional().describe('Receive promotional push notifications'),
+        friend_activity_push: z.boolean().optional().describe('Receive friend activity push notifications'),
+        review_comments_push: z.boolean().optional().describe('Receive review comment push notifications'),
+        direct_messages_push: z.boolean().optional().describe('Receive direct message push notifications'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const updates: any = { user_id: 'me' };
+          
+          // Display preferences
+          if (args.language || args.currency || args.distance_unit) {
+            updates.display_preferences = {};
+            if (args.language) updates.display_preferences.language = args.language;
+            if (args.currency) updates.display_preferences.currency = args.currency;
+            if (args.distance_unit) updates.display_preferences.distance_unit = args.distance_unit;
+          }
+          
+          // Search preferences
+          if (args.default_location || args.default_radius) {
+            updates.search_preferences = {};
+            if (args.default_location) updates.search_preferences.default_location = args.default_location;
+            if (args.default_radius) updates.search_preferences.default_radius = args.default_radius;
+          }
+          
+          // Email preferences
+          if (args.promotional_emails !== undefined || args.friend_activity_emails !== undefined || 
+              args.review_comments_emails !== undefined || args.direct_messages_emails !== undefined) {
+            updates.email_preferences = {};
+            if (args.promotional_emails !== undefined) updates.email_preferences.promotional = args.promotional_emails;
+            if (args.friend_activity_emails !== undefined) updates.email_preferences.friend_activity = args.friend_activity_emails;
+            if (args.review_comments_emails !== undefined) updates.email_preferences.review_comments = args.review_comments_emails;
+            if (args.direct_messages_emails !== undefined) updates.email_preferences.direct_messages = args.direct_messages_emails;
+          }
+          
+          // Push preferences
+          if (args.promotional_push !== undefined || args.friend_activity_push !== undefined || 
+              args.review_comments_push !== undefined || args.direct_messages_push !== undefined) {
+            updates.push_preferences = {};
+            if (args.promotional_push !== undefined) updates.push_preferences.promotional = args.promotional_push;
+            if (args.friend_activity_push !== undefined) updates.push_preferences.friend_activity = args.friend_activity_push;
+            if (args.review_comments_push !== undefined) updates.push_preferences.review_comments = args.review_comments_push;
+            if (args.direct_messages_push !== undefined) updates.push_preferences.direct_messages = args.direct_messages_push;
+          }
+          
+          const response = await yelpService.userManagement.updateUserPreferences(updates);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatUserPreferencesResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error updating user preferences: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetFriends: {
+      description: "Get a user's friends",
+      schema: z.object({
+        user_id: z.string().optional().describe('User ID (defaults to current user)'),
+        limit: z.number().optional().describe('Number of results to return (max 50)'),
+        offset: z.number().optional().describe('Offset the list of returned results by this amount'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.getFriends(
+            args.user_id,
+            args.limit,
+            args.offset
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatFriendsResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting friends: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetUserCollections: {
+      description: "Get a user's collections",
+      schema: z.object({
+        user_id: z.string().optional().describe('User ID (defaults to current user)'),
+        limit: z.number().optional().describe('Number of results to return (max 50)'),
+        offset: z.number().optional().describe('Offset the list of returned results by this amount'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.getCollections(
+            args.user_id,
+            args.limit,
+            args.offset
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatCollectionsResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting collections: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetCollectionDetails: {
+      description: "Get details for a specific collection",
+      schema: z.object({
+        collection_id: z.string().describe('Collection ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.getCollection(args.collection_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatCollectionDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting collection details: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpCreateCollection: {
+      description: "Create a new collection",
+      schema: z.object({
+        name: z.string().describe('Collection name'),
+        description: z.string().optional().describe('Collection description'),
+        is_public: z.boolean().optional().describe('Whether the collection is public (default: true)'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.createCollection(
+            args.name,
+            args.description,
+            args.is_public
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatCollectionDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error creating collection: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpUpdateCollection: {
+      description: "Update an existing collection",
+      schema: z.object({
+        collection_id: z.string().describe('Collection ID'),
+        name: z.string().optional().describe('New collection name'),
+        description: z.string().optional().describe('New collection description'),
+        is_public: z.boolean().optional().describe('New public status'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.updateCollection(
+            args.collection_id,
+            args.name,
+            args.description,
+            args.is_public
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatCollectionDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error updating collection: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpDeleteCollection: {
+      description: "Delete a collection",
+      schema: z.object({
+        collection_id: z.string().describe('Collection ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.deleteCollection(args.collection_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Collection deletion status: ${response.success ? '✅ Successfully deleted' : '❌ Failed to delete'}`
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error deleting collection: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetCollectionItems: {
+      description: "Get items in a collection",
+      schema: z.object({
+        collection_id: z.string().describe('Collection ID'),
+        limit: z.number().optional().describe('Number of results to return (max 50)'),
+        offset: z.number().optional().describe('Offset the list of returned results by this amount'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.getCollectionItems(
+            args.collection_id,
+            args.limit,
+            args.offset
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatCollectionItemsResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting collection items: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpAddBusinessToCollection: {
+      description: "Add a business to a collection",
+      schema: z.object({
+        collection_id: z.string().describe('Collection ID'),
+        business_id: z.string().describe('Business ID'),
+        note: z.string().optional().describe('Note about the business'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.addBusinessToCollection(
+            args.collection_id,
+            args.business_id,
+            args.note
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✅ Added "${response.business_name}" to collection successfully.`
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error adding business to collection: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpRemoveBusinessFromCollection: {
+      description: "Remove a business from a collection",
+      schema: z.object({
+        collection_id: z.string().describe('Collection ID'),
+        item_id: z.string().describe('Collection item ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.userManagement.removeBusinessFromCollection(
+            args.collection_id,
+            args.item_id
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Business removal status: ${response.success ? '✅ Successfully removed' : '❌ Failed to remove'}`
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error removing business from collection: ${(error as Error).message}`
               }
             ]
           };
@@ -2233,6 +2784,259 @@ function formatDocumentUploadResponse(response: DocumentUploadResponse): string 
   
   const createdDate = new Date(response.created_at).toLocaleDateString();
   formattedResponse += `Uploaded: ${createdDate}\n`;
+  
+  return formattedResponse;
+}
+
+/**
+ * Format user profile response
+ */
+function formatUserProfileResponse(profile: UserProfile): string {
+  let formattedResponse = '## User Profile\n\n';
+  
+  formattedResponse += `Name: ${profile.name}\n`;
+  formattedResponse += `User ID: ${profile.user_id}\n`;
+  
+  if (profile.email) {
+    formattedResponse += `Email: ${profile.email}\n`;
+  }
+  
+  if (profile.location) {
+    let location = profile.location.city;
+    if (profile.location.state_code) location += `, ${profile.location.state_code}`;
+    if (profile.location.country_code) location += `, ${profile.location.country_code}`;
+    formattedResponse += `Location: ${location}\n`;
+  }
+  
+  const joinedDate = new Date(profile.joined_date).toLocaleDateString();
+  formattedResponse += `Joined Yelp: ${joinedDate}\n`;
+  formattedResponse += `Review Count: ${profile.review_count}\n`;
+  formattedResponse += `Photo Count: ${profile.photo_count}\n`;
+  
+  if (profile.elite_years && profile.elite_years.length > 0) {
+    formattedResponse += `Elite Years: ${profile.elite_years.join(', ')}\n`;
+  }
+  
+  if (profile.social_stats) {
+    formattedResponse += '\n### Social Stats\n';
+    formattedResponse += `Friends: ${profile.social_stats.friends}\n`;
+    formattedResponse += `Fans: ${profile.social_stats.fans}\n`;
+    formattedResponse += `Compliments: ${profile.social_stats.compliments}\n`;
+  }
+  
+  if (profile.metrics) {
+    formattedResponse += '\n### Review Metrics\n';
+    formattedResponse += `Average Rating: ${profile.metrics.average_rating.toFixed(1)} stars\n`;
+    
+    if (profile.metrics.rating_distribution) {
+      formattedResponse += '\n**Rating Distribution**\n';
+      for (let i = 5; i >= 1; i--) {
+        const count = profile.metrics.rating_distribution[i.toString() as '1'|'2'|'3'|'4'|'5'] || 0;
+        formattedResponse += `${i} Star${i !== 1 ? 's' : ''}: ${count}\n`;
+      }
+    }
+  }
+  
+  if (profile.image_url) {
+    formattedResponse += `\n![Profile Image](${profile.image_url})\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format user preferences response
+ */
+function formatUserPreferencesResponse(preferences: UserPreferences): string {
+  let formattedResponse = '## User Preferences\n\n';
+  
+  if (preferences.display_preferences) {
+    formattedResponse += '### Display Preferences\n';
+    formattedResponse += `Language: ${preferences.display_preferences.language}\n`;
+    formattedResponse += `Currency: ${preferences.display_preferences.currency}\n`;
+    formattedResponse += `Distance Unit: ${preferences.display_preferences.distance_unit === 'mi' ? 'Miles' : 'Kilometers'}\n\n`;
+  }
+  
+  if (preferences.email_preferences) {
+    formattedResponse += '### Email Notifications\n';
+    formattedResponse += `Promotional: ${preferences.email_preferences.promotional ? '✅' : '❌'}\n`;
+    formattedResponse += `Friend Activity: ${preferences.email_preferences.friend_activity ? '✅' : '❌'}\n`;
+    formattedResponse += `Review Comments: ${preferences.email_preferences.review_comments ? '✅' : '❌'}\n`;
+    formattedResponse += `Direct Messages: ${preferences.email_preferences.direct_messages ? '✅' : '❌'}\n\n`;
+  }
+  
+  if (preferences.push_preferences) {
+    formattedResponse += '### Push Notifications\n';
+    formattedResponse += `Promotional: ${preferences.push_preferences.promotional ? '✅' : '❌'}\n`;
+    formattedResponse += `Friend Activity: ${preferences.push_preferences.friend_activity ? '✅' : '❌'}\n`;
+    formattedResponse += `Review Comments: ${preferences.push_preferences.review_comments ? '✅' : '❌'}\n`;
+    formattedResponse += `Direct Messages: ${preferences.push_preferences.direct_messages ? '✅' : '❌'}\n\n`;
+  }
+  
+  if (preferences.search_preferences) {
+    formattedResponse += '### Search Preferences\n';
+    
+    if (preferences.search_preferences.default_location) {
+      formattedResponse += `Default Location: ${preferences.search_preferences.default_location}\n`;
+    }
+    
+    if (preferences.search_preferences.default_radius) {
+      const radiusInMiles = (preferences.search_preferences.default_radius / 1609.34).toFixed(1);
+      formattedResponse += `Default Radius: ${preferences.search_preferences.default_radius}m (${radiusInMiles} miles)\n`;
+    }
+    
+    if (preferences.search_preferences.price_filter && preferences.search_preferences.price_filter.length > 0) {
+      const priceFilters = preferences.search_preferences.price_filter
+        .map(p => '$'.repeat(p))
+        .join(', ');
+      formattedResponse += `Price Filters: ${priceFilters}\n`;
+    }
+    
+    if (preferences.search_preferences.cuisine_preferences && preferences.search_preferences.cuisine_preferences.length > 0) {
+      formattedResponse += `Cuisine Preferences: ${preferences.search_preferences.cuisine_preferences.join(', ')}\n`;
+    }
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format friends response
+ */
+function formatFriendsResponse(response: FriendsResponse): string {
+  let formattedResponse = '## Friends\n\n';
+  
+  formattedResponse += `Total Friends: ${response.total}\n\n`;
+  
+  if (response.friends.length === 0) {
+    formattedResponse += 'No friends found.\n';
+    return formattedResponse;
+  }
+  
+  response.friends.forEach((friend, index) => {
+    formattedResponse += `### ${index + 1}. ${friend.name}\n`;
+    formattedResponse += `User ID: ${friend.user_id}\n`;
+    
+    if (friend.location) {
+      formattedResponse += `Location: ${friend.location}\n`;
+    }
+    
+    formattedResponse += `Reviews: ${friend.review_count}\n`;
+    
+    if (friend.elite_years && friend.elite_years.length > 0) {
+      formattedResponse += `Elite Years: ${friend.elite_years.join(', ')}\n`;
+    }
+    
+    const friendSince = new Date(friend.friend_since).toLocaleDateString();
+    formattedResponse += `Friends Since: ${friendSince}\n\n`;
+  });
+  
+  if (response.pagination && response.pagination.next_offset) {
+    formattedResponse += `*There are more friends available. Use offset=${response.pagination.next_offset} to see more.*\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format collections response
+ */
+function formatCollectionsResponse(response: CollectionsResponse): string {
+  let formattedResponse = '## Collections\n\n';
+  
+  formattedResponse += `Total Collections: ${response.total}\n\n`;
+  
+  if (response.collections.length === 0) {
+    formattedResponse += 'No collections found.\n';
+    return formattedResponse;
+  }
+  
+  response.collections.forEach((collection, index) => {
+    formattedResponse += `### ${index + 1}. ${collection.name}\n`;
+    formattedResponse += `ID: ${collection.collection_id}\n`;
+    
+    if (collection.description) {
+      formattedResponse += `Description: ${collection.description}\n`;
+    }
+    
+    formattedResponse += `Items: ${collection.item_count}\n`;
+    formattedResponse += `Public: ${collection.is_public ? 'Yes' : 'No'}\n`;
+    
+    const createdDate = new Date(collection.created_at).toLocaleDateString();
+    formattedResponse += `Created: ${createdDate}\n\n`;
+  });
+  
+  if (response.pagination && response.pagination.next_offset) {
+    formattedResponse += `*There are more collections available. Use offset=${response.pagination.next_offset} to see more.*\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format collection details
+ */
+function formatCollectionDetails(collection: Collection): string {
+  let formattedResponse = `## Collection: ${collection.name}\n\n`;
+  
+  formattedResponse += `ID: ${collection.collection_id}\n`;
+  formattedResponse += `Owner ID: ${collection.user_id}\n`;
+  
+  if (collection.description) {
+    formattedResponse += `Description: ${collection.description}\n`;
+  }
+  
+  formattedResponse += `Items: ${collection.item_count}\n`;
+  formattedResponse += `Public: ${collection.is_public ? 'Yes' : 'No'}\n`;
+  
+  const createdDate = new Date(collection.created_at).toLocaleDateString();
+  const updatedDate = new Date(collection.updated_at).toLocaleDateString();
+  
+  formattedResponse += `Created: ${createdDate}\n`;
+  formattedResponse += `Last Updated: ${updatedDate}\n`;
+  
+  if (collection.cover_image_url) {
+    formattedResponse += `\n![Cover Image](${collection.cover_image_url})\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format collection items response
+ */
+function formatCollectionItemsResponse(response: CollectionItemsResponse): string {
+  let formattedResponse = `## Collection: ${response.name}\n\n`;
+  
+  formattedResponse += `Collection ID: ${response.collection_id}\n`;
+  formattedResponse += `Total Items: ${response.total}\n\n`;
+  
+  if (response.items.length === 0) {
+    formattedResponse += 'No items in this collection.\n';
+    return formattedResponse;
+  }
+  
+  response.items.forEach((item, index) => {
+    formattedResponse += `### ${index + 1}. ${item.business_name}\n`;
+    formattedResponse += `Business ID: ${item.business_id}\n`;
+    
+    if (item.note) {
+      formattedResponse += `Note: ${item.note}\n`;
+    }
+    
+    const addedDate = new Date(item.added_at).toLocaleDateString();
+    formattedResponse += `Added: ${addedDate}\n`;
+    
+    if (item.business_image_url) {
+      formattedResponse += `\n![Business Image](${item.business_image_url})\n`;
+    }
+    
+    formattedResponse += '\n';
+  });
+  
+  if (response.pagination && response.pagination.next_offset) {
+    formattedResponse += `*There are more items available. Use offset=${response.pagination.next_offset} to see more.*\n`;
+  }
   
   return formattedResponse;
 }
