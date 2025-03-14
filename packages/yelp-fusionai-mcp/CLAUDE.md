@@ -93,6 +93,13 @@
 - yelpGetPayment - Get details for a specific payment
 - yelpRefundPayment - Request a refund for a payment
 
+### Claim Business Tools
+- yelpCheckClaimEligibility - Check if a business is eligible for claiming
+- yelpSubmitBusinessClaim - Submit a claim for a business
+- yelpGetClaimStatus - Get the status of a business claim
+- yelpVerifyClaimCode - Submit verification code for a claim
+- yelpCancelClaim - Cancel a pending business claim
+
 ### Respond Reviews Tools
 - yelpRespondReviewsGetToken - Get an OAuth access token for responding to reviews
 - yelpRespondReviewsBusinesses - Get businesses that the user can respond to reviews for
