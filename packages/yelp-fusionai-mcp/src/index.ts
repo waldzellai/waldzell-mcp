@@ -55,6 +55,22 @@ import {
   CreateDataIngestionJobParams,
   UpdateDataIngestionJobParams
 } from './services/api/data-ingestion';
+import {
+  Lead,
+  LeadListResponse,
+  LeadNote,
+  LeadNoteListResponse,
+  LeadActivity,
+  LeadActivityListResponse,
+  BulkOperationResponse,
+  ImportLeadsResponse,
+  ExportLeadsResponse,
+  ExportJobStatusResponse,
+  LeadStatistics,
+  LeadStatus,
+  LeadSource,
+  LeadPriority
+} from './services/api/leads';
 
 // Define our implementation
 const server = new McpServer({
@@ -146,6 +162,24 @@ const server = new McpServer({
   - yelpUpdateDataIngestionJob: Update an existing data ingestion job
   - yelpCancelDataIngestionJob: Cancel a data ingestion job
   - yelpRetryDataIngestionJob: Retry a failed data ingestion job
+  
+  Leads Management Tools:
+  - yelpGetLeads: Get list of leads with optional filtering
+  - yelpGetLead: Get details about a specific lead
+  - yelpCreateLead: Create a new lead
+  - yelpUpdateLead: Update an existing lead
+  - yelpDeleteLead: Delete a lead
+  - yelpGetLeadNotes: Get notes for a lead
+  - yelpAddLeadNote: Add a note to a lead
+  - yelpDeleteLeadNote: Delete a note from a lead
+  - yelpGetLeadActivities: Get activity history for a lead
+  - yelpAddLeadActivity: Add an activity to a lead
+  - yelpBulkUpdateLeads: Update multiple leads in bulk
+  - yelpBulkDeleteLeads: Delete multiple leads in bulk
+  - yelpImportLeads: Import leads from a data source
+  - yelpExportLeads: Export leads to a file
+  - yelpGetExportStatus: Check status of an export job
+  - yelpGetLeadStatistics: Get statistics about leads
   
   OAuth Tools:
   - yelpGetOAuthToken: Get an OAuth access token (v2 or v3)
@@ -1976,6 +2010,597 @@ const server = new McpServer({
       }
     },
     
+    // Leads Management Tools
+    yelpGetLeads: {
+      description: "Get list of leads with optional filtering",
+      schema: z.object({
+        query: z.string().optional().describe('Search query to match against lead details'),
+        status: z.union([
+          z.enum(['new', 'contacted', 'qualified', 'converted', 'lost']),
+          z.array(z.enum(['new', 'contacted', 'qualified', 'converted', 'lost']))
+        ]).optional().describe('Filter by lead status'),
+        source: z.union([
+          z.enum(['website', 'referral', 'advertisement', 'social_media', 'event', 'other']),
+          z.array(z.enum(['website', 'referral', 'advertisement', 'social_media', 'event', 'other']))
+        ]).optional().describe('Filter by lead source'),
+        priority: z.union([
+          z.enum(['low', 'medium', 'high']),
+          z.array(z.enum(['low', 'medium', 'high']))
+        ]).optional().describe('Filter by lead priority'),
+        tags: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by tags'),
+        business_id: z.string().optional().describe('Filter by associated business ID'),
+        campaign_id: z.string().optional().describe('Filter by associated campaign ID'),
+        owner_id: z.string().optional().describe('Filter by owner/assignee ID'),
+        created_after: z.string().optional().describe('Filter by creation date (ISO format)'),
+        created_before: z.string().optional().describe('Filter by creation date (ISO format)'),
+        contacted_after: z.string().optional().describe('Filter by last contact date (ISO format)'),
+        contacted_before: z.string().optional().describe('Filter by last contact date (ISO format)'),
+        sort_by: z.enum(['created_at', 'updated_at', 'last_contacted_at', 'name', 'priority', 'estimated_value_cents']).optional().describe('Sort results by a specific field'),
+        sort_order: z.enum(['asc', 'desc']).optional().describe('Sort direction'),
+        page: z.number().optional().describe('Page number for pagination'),
+        per_page: z.number().optional().describe('Number of leads per page'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.getLeads(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatLeadListResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting leads: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetLead: {
+      description: "Get details about a specific lead",
+      schema: z.object({
+        lead_id: z.string().describe('Lead ID to retrieve'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.getLead(args.lead_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatLead(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting lead details: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpCreateLead: {
+      description: "Create a new lead",
+      schema: z.object({
+        name: z.string().describe('Full name of the lead'),
+        email: z.string().describe('Email address of the lead'),
+        phone: z.string().optional().describe('Phone number of the lead'),
+        company: z.string().optional().describe('Company or organization name'),
+        job_title: z.string().optional().describe('Job title or position'),
+        status: z.enum(['new', 'contacted', 'qualified', 'converted', 'lost']).optional().describe('Status of the lead (defaults to new)'),
+        priority: z.enum(['low', 'medium', 'high']).optional().describe('Priority level of the lead (defaults to medium)'),
+        source: z.enum(['website', 'referral', 'advertisement', 'social_media', 'event', 'other']).describe('Source of the lead'),
+        source_details: z.string().optional().describe('Custom source details if source is other'),
+        estimated_value_cents: z.number().optional().describe('Estimated value of the lead in cents'),
+        address: z.object({
+          street: z.string().optional().describe('Street address'),
+          city: z.string().optional().describe('City'),
+          state: z.string().optional().describe('State or province'),
+          zip_code: z.string().optional().describe('Postal code'),
+          country: z.string().optional().describe('Country'),
+        }).optional().describe('Lead\'s address'),
+        notes: z.string().optional().describe('Notes about the lead'),
+        business_id: z.string().optional().describe('Associated business ID'),
+        campaign_id: z.string().optional().describe('Associated campaign ID'),
+        owner_id: z.string().optional().describe('Owner or assignee user ID'),
+        tags: z.array(z.string()).optional().describe('Tags associated with the lead'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.createLead(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatLead(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error creating lead: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpUpdateLead: {
+      description: "Update an existing lead",
+      schema: z.object({
+        lead_id: z.string().describe('Lead ID to update'),
+        name: z.string().optional().describe('Full name of the lead'),
+        email: z.string().optional().describe('Email address of the lead'),
+        phone: z.string().optional().describe('Phone number of the lead'),
+        company: z.string().optional().describe('Company or organization name'),
+        job_title: z.string().optional().describe('Job title or position'),
+        status: z.enum(['new', 'contacted', 'qualified', 'converted', 'lost']).optional().describe('Status of the lead'),
+        priority: z.enum(['low', 'medium', 'high']).optional().describe('Priority level of the lead'),
+        source: z.enum(['website', 'referral', 'advertisement', 'social_media', 'event', 'other']).optional().describe('Source of the lead'),
+        source_details: z.string().optional().describe('Custom source details if source is other'),
+        estimated_value_cents: z.number().optional().describe('Estimated value of the lead in cents'),
+        address: z.object({
+          street: z.string().optional().describe('Street address'),
+          city: z.string().optional().describe('City'),
+          state: z.string().optional().describe('State or province'),
+          zip_code: z.string().optional().describe('Postal code'),
+          country: z.string().optional().describe('Country'),
+        }).optional().describe('Lead\'s address'),
+        notes: z.string().optional().describe('Notes about the lead'),
+        business_id: z.string().optional().describe('Associated business ID'),
+        campaign_id: z.string().optional().describe('Associated campaign ID'),
+        owner_id: z.string().optional().describe('Owner or assignee user ID'),
+        tags: z.array(z.string()).optional().describe('Tags associated with the lead'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const { lead_id, ...updateData } = args;
+          const response = await yelpService.leads.updateLead(lead_id, updateData);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatLead(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error updating lead: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpDeleteLead: {
+      description: "Delete a lead",
+      schema: z.object({
+        lead_id: z.string().describe('Lead ID to delete'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.deleteLead(args.lead_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Lead deletion status: ${response.success ? '✅ Successfully deleted' : '❌ Failed to delete'}`
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error deleting lead: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetLeadNotes: {
+      description: "Get notes for a lead",
+      schema: z.object({
+        lead_id: z.string().describe('Lead ID to get notes for'),
+        page: z.number().optional().describe('Page number for pagination'),
+        per_page: z.number().optional().describe('Number of notes per page'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.getLeadNotes(args.lead_id, args.page, args.per_page);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatLeadNoteListResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting lead notes: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpAddLeadNote: {
+      description: "Add a note to a lead",
+      schema: z.object({
+        lead_id: z.string().describe('Lead ID to add a note to'),
+        content: z.string().describe('Content of the note'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.addLeadNote(args.lead_id, { content: args.content });
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatLeadNote(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error adding lead note: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpDeleteLeadNote: {
+      description: "Delete a note from a lead",
+      schema: z.object({
+        lead_id: z.string().describe('Lead ID the note belongs to'),
+        note_id: z.string().describe('Note ID to delete'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.deleteLeadNote(args.lead_id, args.note_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Note deletion status: ${response.success ? '✅ Successfully deleted' : '❌ Failed to delete'}`
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error deleting lead note: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetLeadActivities: {
+      description: "Get activity history for a lead",
+      schema: z.object({
+        lead_id: z.string().describe('Lead ID to get activities for'),
+        page: z.number().optional().describe('Page number for pagination'),
+        per_page: z.number().optional().describe('Number of activities per page'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.getLeadActivities(args.lead_id, args.page, args.per_page);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatLeadActivityListResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting lead activities: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpAddLeadActivity: {
+      description: "Add an activity to a lead",
+      schema: z.object({
+        lead_id: z.string().describe('Lead ID to add an activity to'),
+        type: z.enum(['note', 'status_change', 'contact', 'email', 'call', 'meeting', 'task', 'custom']).describe('Type of activity'),
+        description: z.string().describe('Description of the activity'),
+        details: z.record(z.any()).optional().describe('Additional details about the activity'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const { lead_id, ...activityData } = args;
+          const response = await yelpService.leads.addLeadActivity(lead_id, activityData);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatLeadActivity(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error adding lead activity: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpBulkUpdateLeads: {
+      description: "Update multiple leads in bulk",
+      schema: z.object({
+        lead_ids: z.array(z.string()).describe('Array of lead IDs to update'),
+        updates: z.object({
+          status: z.enum(['new', 'contacted', 'qualified', 'converted', 'lost']).optional().describe('Status to set for all leads'),
+          priority: z.enum(['low', 'medium', 'high']).optional().describe('Priority to set for all leads'),
+          owner_id: z.string().optional().describe('Owner ID to set for all leads'),
+          tags: z.array(z.string()).optional().describe('Tags to add to all leads'),
+        }).describe('Updates to apply to all specified leads'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.bulkUpdateLeads(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatBulkOperationResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error updating leads in bulk: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpBulkDeleteLeads: {
+      description: "Delete multiple leads in bulk",
+      schema: z.object({
+        lead_ids: z.array(z.string()).describe('Array of lead IDs to delete'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.bulkDeleteLeads(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatBulkOperationResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error deleting leads in bulk: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpImportLeads: {
+      description: "Import leads from a data source",
+      schema: z.object({
+        leads: z.array(z.object({
+          name: z.string().describe('Full name of the lead'),
+          email: z.string().describe('Email address of the lead'),
+          phone: z.string().optional().describe('Phone number of the lead'),
+          company: z.string().optional().describe('Company or organization name'),
+          job_title: z.string().optional().describe('Job title or position'),
+          status: z.enum(['new', 'contacted', 'qualified', 'converted', 'lost']).optional().describe('Status of the lead'),
+          priority: z.enum(['low', 'medium', 'high']).optional().describe('Priority level of the lead'),
+          source: z.enum(['website', 'referral', 'advertisement', 'social_media', 'event', 'other']).describe('Source of the lead'),
+          source_details: z.string().optional().describe('Custom source details if source is other'),
+          estimated_value_cents: z.number().optional().describe('Estimated value of the lead in cents'),
+          tags: z.array(z.string()).optional().describe('Tags associated with the lead'),
+        })).describe('Array of leads to import'),
+        skip_duplicates: z.boolean().optional().describe('Whether to skip duplicate checks (default: false)'),
+        duplicate_check_field: z.enum(['email', 'phone', 'external_id']).optional().describe('Field to use for duplicate checking (default: email)'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.importLeads(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatImportLeadsResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error importing leads: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpExportLeads: {
+      description: "Export leads to a file",
+      schema: z.object({
+        status: z.union([
+          z.enum(['new', 'contacted', 'qualified', 'converted', 'lost']),
+          z.array(z.enum(['new', 'contacted', 'qualified', 'converted', 'lost']))
+        ]).optional().describe('Filter by lead status'),
+        source: z.union([
+          z.enum(['website', 'referral', 'advertisement', 'social_media', 'event', 'other']),
+          z.array(z.enum(['website', 'referral', 'advertisement', 'social_media', 'event', 'other']))
+        ]).optional().describe('Filter by lead source'),
+        created_after: z.string().optional().describe('Filter by creation date (ISO format)'),
+        created_before: z.string().optional().describe('Filter by creation date (ISO format)'),
+        format: z.enum(['csv', 'json', 'xlsx']).optional().describe('Format of the export (default: csv)'),
+        fields: z.array(z.string()).optional().describe('Array of field names to include in the export'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.exportLeads(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatExportLeadsResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error exporting leads: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetExportStatus: {
+      description: "Check status of an export job",
+      schema: z.object({
+        export_job_id: z.string().describe('Export job ID to check'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.getExportStatus(args.export_job_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatExportJobStatusResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error checking export status: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetLeadStatistics: {
+      description: "Get statistics about leads",
+      schema: z.object({
+        timeframe: z.enum(['all_time', 'last_7_days', 'last_30_days', 'last_90_days', 'year_to_date']).optional().describe('Timeframe for statistics (default: all_time)'),
+        owner_id: z.string().optional().describe('Filter statistics by owner ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.leads.getLeadStatistics(args.timeframe, args.owner_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatLeadStatistics(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting lead statistics: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
     // Respond Reviews Tools
     yelpRespondReviewsGetToken: {
       description: "Get an OAuth access token for responding to reviews",
@@ -3573,6 +4198,404 @@ function formatDataIngestionJobListResponse(response: DataIngestionJobListRespon
     if (response.pagination.offset > 0 || response.pagination.limit < response.pagination.total) {
       formattedResponse += `Showing items ${response.pagination.offset + 1} to ${Math.min(response.pagination.offset + response.pagination.limit, response.pagination.total)}.\n`;
     }
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format a lead for display
+ */
+function formatLead(lead: Lead): string {
+  const statusEmoji = {
+    'new': '🆕',
+    'contacted': '📞',
+    'qualified': '✅',
+    'converted': '🌟',
+    'lost': '❌'
+  };
+
+  const priorityEmoji = {
+    'low': '⬇️',
+    'medium': '➡️',
+    'high': '⬆️'
+  };
+
+  let formattedResponse = `## Lead: ${lead.name}\n\n`;
+  formattedResponse += `**ID**: ${lead.id}\n`;
+  formattedResponse += `**Email**: ${lead.email}\n`;
+  
+  if (lead.phone) {
+    formattedResponse += `**Phone**: ${lead.phone}\n`;
+  }
+  
+  if (lead.company) {
+    formattedResponse += `**Company**: ${lead.company}\n`;
+  }
+  
+  if (lead.job_title) {
+    formattedResponse += `**Job Title**: ${lead.job_title}\n`;
+  }
+  
+  formattedResponse += `**Status**: ${statusEmoji[lead.status] || ''} ${lead.status}\n`;
+  formattedResponse += `**Priority**: ${priorityEmoji[lead.priority] || ''} ${lead.priority}\n`;
+  formattedResponse += `**Source**: ${lead.source}${lead.source_details ? ` (${lead.source_details})` : ''}\n`;
+  
+  if (lead.estimated_value_cents) {
+    formattedResponse += `**Estimated Value**: $${(lead.estimated_value_cents / 100).toFixed(2)}\n`;
+  }
+  
+  if (lead.address) {
+    const addressParts = [];
+    if (lead.address.street) addressParts.push(lead.address.street);
+    if (lead.address.city) addressParts.push(lead.address.city);
+    if (lead.address.state) addressParts.push(lead.address.state);
+    if (lead.address.zip_code) addressParts.push(lead.address.zip_code);
+    if (lead.address.country) addressParts.push(lead.address.country);
+    
+    if (addressParts.length > 0) {
+      formattedResponse += `**Address**: ${addressParts.join(', ')}\n`;
+    }
+  }
+  
+  if (lead.notes) {
+    formattedResponse += `**Notes**: ${lead.notes}\n`;
+  }
+  
+  if (lead.business_id) {
+    formattedResponse += `**Business ID**: ${lead.business_id}\n`;
+  }
+  
+  if (lead.campaign_id) {
+    formattedResponse += `**Campaign ID**: ${lead.campaign_id}\n`;
+  }
+  
+  if (lead.owner_id) {
+    formattedResponse += `**Owner ID**: ${lead.owner_id}\n`;
+  }
+  
+  if (lead.tags && lead.tags.length > 0) {
+    formattedResponse += `**Tags**: ${lead.tags.join(', ')}\n`;
+  }
+  
+  formattedResponse += `**Created**: ${new Date(lead.created_at).toLocaleString()}\n`;
+  formattedResponse += `**Updated**: ${new Date(lead.updated_at).toLocaleString()}\n`;
+  
+  if (lead.last_contacted_at) {
+    formattedResponse += `**Last Contacted**: ${new Date(lead.last_contacted_at).toLocaleString()}\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format a list of leads for display
+ */
+function formatLeadListResponse(response: LeadListResponse): string {
+  if (!response.leads || response.leads.length === 0) {
+    return "No leads found.";
+  }
+  
+  const statusEmoji = {
+    'new': '🆕',
+    'contacted': '📞',
+    'qualified': '✅',
+    'converted': '🌟',
+    'lost': '❌'
+  };
+
+  const priorityEmoji = {
+    'low': '⬇️',
+    'medium': '➡️',
+    'high': '⬆️'
+  };
+  
+  let formattedResponse = '## Leads\n\n';
+  
+  response.leads.forEach((lead, index) => {
+    formattedResponse += `### ${index + 1}. ${lead.name}\n`;
+    formattedResponse += `**ID**: ${lead.id}\n`;
+    formattedResponse += `**Email**: ${lead.email}\n`;
+    formattedResponse += `**Status**: ${statusEmoji[lead.status] || ''} ${lead.status}\n`;
+    formattedResponse += `**Priority**: ${priorityEmoji[lead.priority] || ''} ${lead.priority}\n`;
+    formattedResponse += `**Source**: ${lead.source}\n`;
+    
+    if (lead.company) {
+      formattedResponse += `**Company**: ${lead.company}\n`;
+    }
+    
+    if (lead.last_contacted_at) {
+      formattedResponse += `**Last Contacted**: ${new Date(lead.last_contacted_at).toLocaleString()}\n`;
+    }
+    
+    formattedResponse += '\n';
+  });
+  
+  if (response.pagination) {
+    formattedResponse += `Total: ${response.pagination.total} leads | Page: ${response.pagination.page} of ${Math.ceil(response.pagination.total / response.pagination.per_page)}\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format a lead note for display
+ */
+function formatLeadNote(note: LeadNote): string {
+  let formattedResponse = `## Lead Note\n\n`;
+  formattedResponse += `**ID**: ${note.id}\n`;
+  formattedResponse += `**Lead ID**: ${note.lead_id}\n`;
+  formattedResponse += `**Created By**: ${note.created_by}\n`;
+  formattedResponse += `**Created**: ${new Date(note.created_at).toLocaleString()}\n`;
+  formattedResponse += `**Updated**: ${new Date(note.updated_at).toLocaleString()}\n\n`;
+  formattedResponse += `${note.content}\n`;
+  
+  return formattedResponse;
+}
+
+/**
+ * Format a list of lead notes for display
+ */
+function formatLeadNoteListResponse(response: LeadNoteListResponse): string {
+  if (!response.notes || response.notes.length === 0) {
+    return "No notes found for this lead.";
+  }
+  
+  let formattedResponse = '## Lead Notes\n\n';
+  
+  response.notes.forEach((note, index) => {
+    formattedResponse += `### Note ${index + 1}\n`;
+    formattedResponse += `**ID**: ${note.id}\n`;
+    formattedResponse += `**Created By**: ${note.created_by}\n`;
+    formattedResponse += `**Date**: ${new Date(note.created_at).toLocaleString()}\n\n`;
+    formattedResponse += `${note.content}\n\n`;
+  });
+  
+  if (response.pagination) {
+    formattedResponse += `Total: ${response.pagination.total} notes | Page: ${response.pagination.page} of ${Math.ceil(response.pagination.total / response.pagination.per_page)}\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format a lead activity for display
+ */
+function formatLeadActivity(activity: LeadActivity): string {
+  let formattedResponse = `## Lead Activity\n\n`;
+  formattedResponse += `**ID**: ${activity.id}\n`;
+  formattedResponse += `**Lead ID**: ${activity.lead_id}\n`;
+  formattedResponse += `**Type**: ${activity.type}\n`;
+  formattedResponse += `**Description**: ${activity.description}\n`;
+  formattedResponse += `**Created By**: ${activity.created_by}\n`;
+  formattedResponse += `**Created**: ${new Date(activity.created_at).toLocaleString()}\n`;
+  
+  if (activity.details) {
+    formattedResponse += '\n### Details\n\n';
+    for (const [key, value] of Object.entries(activity.details)) {
+      formattedResponse += `**${key}**: ${JSON.stringify(value)}\n`;
+    }
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format a list of lead activities for display
+ */
+function formatLeadActivityListResponse(response: LeadActivityListResponse): string {
+  if (!response.activities || response.activities.length === 0) {
+    return "No activities found for this lead.";
+  }
+  
+  const typeEmoji = {
+    'note': '📝',
+    'status_change': '🔄',
+    'contact': '👋',
+    'email': '📧',
+    'call': '📞',
+    'meeting': '🗓️',
+    'task': '✅',
+    'custom': '🔹'
+  };
+  
+  let formattedResponse = '## Lead Activities\n\n';
+  
+  response.activities.forEach((activity, index) => {
+    const emoji = typeEmoji[activity.type] || '';
+    formattedResponse += `### ${index + 1}. ${emoji} ${activity.type}\n`;
+    formattedResponse += `**ID**: ${activity.id}\n`;
+    formattedResponse += `**Description**: ${activity.description}\n`;
+    formattedResponse += `**Created By**: ${activity.created_by}\n`;
+    formattedResponse += `**Date**: ${new Date(activity.created_at).toLocaleString()}\n`;
+    
+    if (activity.details) {
+      formattedResponse += '**Details**:\n';
+      for (const [key, value] of Object.entries(activity.details)) {
+        formattedResponse += `- ${key}: ${JSON.stringify(value)}\n`;
+      }
+    }
+    
+    formattedResponse += '\n';
+  });
+  
+  if (response.pagination) {
+    formattedResponse += `Total: ${response.pagination.total} activities | Page: ${response.pagination.page} of ${Math.ceil(response.pagination.total / response.pagination.per_page)}\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format a bulk operation response for display
+ */
+function formatBulkOperationResponse(response: BulkOperationResponse): string {
+  let formattedResponse = `## Bulk Operation Results\n\n`;
+  formattedResponse += `**Success Count**: ${response.success_count}\n`;
+  formattedResponse += `**Failure Count**: ${response.failure_count}\n`;
+  
+  if (response.failures && response.failures.length > 0) {
+    formattedResponse += '\n### Failures\n\n';
+    response.failures.forEach(failure => {
+      formattedResponse += `- **ID**: ${failure.id}, **Error**: ${failure.error}\n`;
+    });
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format an import leads response for display
+ */
+function formatImportLeadsResponse(response: ImportLeadsResponse): string {
+  let formattedResponse = `## Lead Import Results\n\n`;
+  formattedResponse += `**Imported**: ${response.imported_count} leads\n`;
+  formattedResponse += `**Skipped**: ${response.skipped_count} leads\n`;
+  formattedResponse += `**Failed**: ${response.failure_count} leads\n`;
+  
+  if (response.imported_ids && response.imported_ids.length > 0) {
+    formattedResponse += '\n### Imported Lead IDs\n\n';
+    response.imported_ids.forEach(id => {
+      formattedResponse += `- ${id}\n`;
+    });
+  }
+  
+  if (response.failures && response.failures.length > 0) {
+    formattedResponse += '\n### Import Failures\n\n';
+    response.failures.forEach(failure => {
+      formattedResponse += `- **Index**: ${failure.index}, **Error**: ${failure.error}\n`;
+    });
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format an export leads response for display
+ */
+function formatExportLeadsResponse(response: ExportLeadsResponse): string {
+  let formattedResponse = `## Lead Export Job\n\n`;
+  formattedResponse += `**Export Job ID**: ${response.export_job_id}\n`;
+  formattedResponse += `**Status**: ${response.status}\n`;
+  
+  if (response.estimated_time_seconds !== undefined) {
+    formattedResponse += `**Estimated Time**: ${response.estimated_time_seconds} seconds\n`;
+  }
+  
+  formattedResponse += '\nUse the `yelpGetExportStatus` tool with this job ID to check the status and get the download link when complete.\n';
+  
+  return formattedResponse;
+}
+
+/**
+ * Format an export job status response for display
+ */
+function formatExportJobStatusResponse(response: ExportJobStatusResponse): string {
+  const statusEmoji = {
+    'pending': '⏳',
+    'processing': '🔄',
+    'completed': '✅',
+    'failed': '❌'
+  };
+
+  let formattedResponse = `## Export Job Status\n\n`;
+  formattedResponse += `**Export Job ID**: ${response.export_job_id}\n`;
+  formattedResponse += `**Status**: ${statusEmoji[response.status] || ''} ${response.status}\n`;
+  formattedResponse += `**Format**: ${response.format}\n`;
+  
+  if (response.lead_count !== undefined) {
+    formattedResponse += `**Lead Count**: ${response.lead_count}\n`;
+  }
+  
+  if (response.download_url) {
+    formattedResponse += `**Download URL**: ${response.download_url}\n`;
+    
+    if (response.expires_at) {
+      formattedResponse += `**URL Expires**: ${new Date(response.expires_at).toLocaleString()}\n`;
+    }
+  }
+  
+  if (response.error) {
+    formattedResponse += `**Error**: ${response.error}\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format lead statistics for display
+ */
+function formatLeadStatistics(stats: LeadStatistics): string {
+  let formattedResponse = `## Lead Statistics\n\n`;
+  formattedResponse += `**Total Leads**: ${stats.total_count}\n`;
+  
+  if (stats.average_value_cents !== undefined) {
+    formattedResponse += `**Average Value**: $${(stats.average_value_cents / 100).toFixed(2)}\n`;
+  }
+  
+  if (stats.conversion_rate?.overall !== undefined) {
+    formattedResponse += `**Overall Conversion Rate**: ${stats.conversion_rate.overall.toFixed(1)}%\n`;
+  }
+  
+  // Status counts
+  formattedResponse += '\n### Status Counts\n\n';
+  for (const [status, count] of Object.entries(stats.status_counts)) {
+    formattedResponse += `- **${status}**: ${count}\n`;
+  }
+  
+  // Source counts
+  formattedResponse += '\n### Source Counts\n\n';
+  for (const [source, count] of Object.entries(stats.source_counts)) {
+    formattedResponse += `- **${source}**: ${count}\n`;
+  }
+  
+  // Priority counts
+  formattedResponse += '\n### Priority Counts\n\n';
+  for (const [priority, count] of Object.entries(stats.priority_counts)) {
+    formattedResponse += `- **${priority}**: ${count}\n`;
+  }
+  
+  // Owner counts
+  formattedResponse += '\n### Owner Counts\n\n';
+  for (const [ownerId, count] of Object.entries(stats.owner_counts)) {
+    formattedResponse += `- **${ownerId}**: ${count}\n`;
+  }
+  
+  // Conversion rates by source
+  if (stats.conversion_rate?.by_source) {
+    formattedResponse += '\n### Conversion Rates by Source\n\n';
+    for (const [source, rate] of Object.entries(stats.conversion_rate.by_source)) {
+      formattedResponse += `- **${source}**: ${rate.toFixed(1)}%\n`;
+    }
+  }
+  
+  // Time stats
+  if (stats.time_stats) {
+    formattedResponse += '\n### Time Statistics\n\n';
+    formattedResponse += `- **New Leads (Last 30 Days)**: ${stats.time_stats.new_leads_last_30_days}\n`;
+    formattedResponse += `- **Conversions (Last 30 Days)**: ${stats.time_stats.conversions_last_30_days}\n`;
+    formattedResponse += `- **Average Time to Contact**: ${stats.time_stats.average_time_to_contact_hours.toFixed(1)} hours\n`;
+    formattedResponse += `- **Average Time to Conversion**: ${stats.time_stats.average_time_to_conversion_days.toFixed(1)} days\n`;
   }
   
   return formattedResponse;

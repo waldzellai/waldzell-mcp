@@ -13,6 +13,7 @@ import checkoutClient from './api/checkout';
 import claimBusinessClient from './api/claim-business';
 import userManagementClient from './api/user-management';
 import dataIngestionClient from './api/data-ingestion';
+import leadsClient from './api/leads';
 
 /**
  * Yelp AI Response interface
@@ -117,6 +118,11 @@ class YelpService {
    * Data Ingestion API client
    */
   readonly dataIngestion = dataIngestionClient;
+  
+  /**
+   * Leads API client
+   */
+  readonly leads = leadsClient;
 }
 
 export default new YelpService();
