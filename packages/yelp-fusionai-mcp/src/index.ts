@@ -18,6 +18,11 @@ import {
   Category,
   CategoriesResponse
 } from './services/api/categories';
+import {
+  Event,
+  EventSearchResponse,
+  FeaturedEventResponse
+} from './services/api/events';
 
 // Define our implementation
 const server = new McpServer({
@@ -176,6 +181,111 @@ const server = new McpServer({
               {
                 type: 'text',
                 text: `Error searching categories: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    // Events Tools
+    yelpEventsSearch: {
+      description: "Search for events in a location",
+      schema: z.object({
+        location: z.string().optional().describe('Location string (e.g., address, city, state)'),
+        latitude: z.number().optional().describe('Latitude coordinate'),
+        longitude: z.number().optional().describe('Longitude coordinate'),
+        radius: z.number().optional().describe('Search radius in meters (max: 40000)'),
+        categories: z.string().optional().describe('Categories to filter by (comma-separated)'),
+        start_date: z.number().optional().describe('Start date (Unix timestamp)'),
+        end_date: z.number().optional().describe('End date (Unix timestamp)'),
+        is_free: z.boolean().optional().describe('Whether the event is free'),
+        limit: z.number().optional().describe('Maximum number of results to return (default: 20, max: 50)'),
+        offset: z.number().optional().describe('Offset for pagination'),
+        sort_by: z.enum(['popularity', 'time_start']).optional().describe('Sorting mode: popularity or time_start'),
+        locale: z.string().optional().describe('Locale (default: en_US)'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.events.search(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatEventSearchResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error searching events: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpEventDetails: {
+      description: "Get detailed information about a specific event",
+      schema: z.object({
+        event_id: z.string().describe('The ID of the event'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.events.getEvent(args.event_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatEventDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting event details: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpFeaturedEvent: {
+      description: "Get the featured event for a location",
+      schema: z.object({
+        location: z.string().optional().describe('Location string (e.g., address, city, state)'),
+        latitude: z.number().optional().describe('Latitude coordinate'),
+        longitude: z.number().optional().describe('Longitude coordinate'),
+        locale: z.string().optional().describe('Locale (default: en_US)'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.events.getFeaturedEvent(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatFeaturedEventResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting featured event: ${(error as Error).message}`
               }
             ]
           };
@@ -898,6 +1008,311 @@ function formatCategoryDetails(category: Category): string {
     formattedResponse += category.country_blacklist.join(', ') + '\n\n';
   }
   
+  return formattedResponse;
+}
+
+/**
+ * Format event search response
+ */
+function formatEventSearchResponse(response: EventSearchResponse): string {
+  let formattedResponse = '## Yelp Events\n\n';
+  
+  if (response.total !== undefined) {
+    formattedResponse += `Found ${response.total} events.\n\n`;
+  }
+  
+  if (response.events.length === 0) {
+    formattedResponse += 'No events found matching your criteria.\n';
+    return formattedResponse;
+  }
+  
+  response.events.forEach((event, index) => {
+    formattedResponse += `### ${index + 1}. ${event.name}\n`;
+    
+    if (event.description) {
+      formattedResponse += `${event.description.substring(0, 150)}${event.description.length > 150 ? '...' : ''}\n\n`;
+    }
+    
+    if (event.time_start) {
+      const startDate = new Date(event.time_start).toLocaleString();
+      formattedResponse += `**When**: ${startDate}`;
+      
+      if (event.time_end) {
+        const endDate = new Date(event.time_end).toLocaleString();
+        formattedResponse += ` to ${endDate}`;
+      }
+      
+      formattedResponse += '\n';
+    }
+    
+    if (event.location && event.location.display_address) {
+      formattedResponse += `**Where**: ${event.location.display_address.join(', ')}\n`;
+    }
+    
+    if (event.is_free !== undefined) {
+      formattedResponse += `**Cost**: ${event.is_free ? 'Free' : (event.cost ? '$' + event.cost : 'Paid')}\n`;
+    }
+    
+    if (event.category) {
+      formattedResponse += `**Category**: ${event.category}\n`;
+    }
+    
+    if (event.attending_count) {
+      formattedResponse += `**Attending**: ${event.attending_count} people\n`;
+    }
+    
+    if (event.url) {
+      formattedResponse += `**Details**: ${event.url}\n`;
+    }
+    
+    formattedResponse += '\n';
+  });
+  
+  return formattedResponse;
+}
+
+/**
+ * Format event details response
+ */
+function formatEventDetails(event: Event): string {
+  let formattedResponse = `## ${event.name}\n\n`;
+  
+  if (event.description) {
+    formattedResponse += `${event.description}\n\n`;
+  }
+  
+  formattedResponse += '### Event Details\n\n';
+  
+  if (event.time_start) {
+    const startDate = new Date(event.time_start).toLocaleString();
+    formattedResponse += `**Date**: ${startDate}`;
+    
+    if (event.time_end) {
+      const endDate = new Date(event.time_end).toLocaleString();
+      formattedResponse += ` to ${endDate}`;
+    }
+    
+    formattedResponse += '\n';
+  }
+  
+  if (event.location) {
+    formattedResponse += '**Location**: ';
+    if (event.location.display_address) {
+      formattedResponse += event.location.display_address.join(', ');
+    } else {
+      const addressParts = [];
+      if (event.location.address1) addressParts.push(event.location.address1);
+      if (event.location.address2) addressParts.push(event.location.address2);
+      if (event.location.address3) addressParts.push(event.location.address3);
+      
+      if (event.location.city) {
+        const cityStateParts = [event.location.city];
+        if (event.location.state) cityStateParts.push(event.location.state);
+        if (event.location.zip_code) cityStateParts.push(event.location.zip_code);
+        addressParts.push(cityStateParts.join(', '));
+      }
+      
+      if (event.location.country) addressParts.push(event.location.country);
+      
+      formattedResponse += addressParts.join(', ');
+    }
+    formattedResponse += '\n';
+  }
+  
+  if (event.is_free !== undefined) {
+    formattedResponse += `**Cost**: ${event.is_free ? 'Free' : (event.cost ? '$' + event.cost : 'Paid')}\n`;
+  }
+  
+  if (event.category) {
+    formattedResponse += `**Category**: ${event.category}\n`;
+  }
+  
+  if (event.business_id) {
+    formattedResponse += `**Hosted by**: Business ID ${event.business_id}\n`;
+  }
+  
+  formattedResponse += '\n### Attendance\n\n';
+  
+  if (event.attending_count !== undefined) {
+    formattedResponse += `**Going**: ${event.attending_count} people\n`;
+  }
+  
+  if (event.interested_count !== undefined) {
+    formattedResponse += `**Interested**: ${event.interested_count} people\n`;
+  }
+  
+  formattedResponse += '\n';
+  
+  if (event.tickets_url) {
+    formattedResponse += `**Tickets**: ${event.tickets_url}\n\n`;
+  }
+  
+  if (event.url) {
+    formattedResponse += `**Event page**: ${event.url}\n\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format featured event response
+ */
+function formatFeaturedEventResponse(response: FeaturedEventResponse): string {
+  let formattedResponse = '## Featured Event\n\n';
+  formattedResponse += formatEventDetails(response.featured_event);
+  return formattedResponse;
+}
+
+/**
+ * Format event search response
+ */
+function formatEventSearchResponse(response: EventSearchResponse): string {
+  let formattedResponse = '## Yelp Events\n\n';
+  
+  if (response.total !== undefined) {
+    formattedResponse += `Found ${response.total} events.\n\n`;
+  }
+  
+  if (response.events.length === 0) {
+    formattedResponse += 'No events found matching your criteria.\n';
+    return formattedResponse;
+  }
+  
+  response.events.forEach((event, index) => {
+    formattedResponse += `### ${index + 1}. ${event.name}\n`;
+    
+    if (event.description) {
+      formattedResponse += `${event.description.substring(0, 150)}${event.description.length > 150 ? '...' : ''}\n\n`;
+    }
+    
+    if (event.time_start) {
+      const startDate = new Date(event.time_start).toLocaleString();
+      formattedResponse += `**When**: ${startDate}`;
+      
+      if (event.time_end) {
+        const endDate = new Date(event.time_end).toLocaleString();
+        formattedResponse += ` to ${endDate}`;
+      }
+      
+      formattedResponse += '\n';
+    }
+    
+    if (event.location && event.location.display_address) {
+      formattedResponse += `**Where**: ${event.location.display_address.join(', ')}\n`;
+    }
+    
+    if (event.is_free !== undefined) {
+      formattedResponse += `**Cost**: ${event.is_free ? 'Free' : (event.cost ? '$' + event.cost : 'Paid')}\n`;
+    }' + event.cost : 'Paid'}\n`;
+    }
+    
+    if (event.category) {
+      formattedResponse += `**Category**: ${event.category}\n`;
+    }
+    
+    if (event.attending_count) {
+      formattedResponse += `**Attending**: ${event.attending_count} people\n`;
+    }
+    
+    if (event.url) {
+      formattedResponse += `**Details**: ${event.url}\n`;
+    }
+    
+    formattedResponse += '\n';
+  });
+  
+  return formattedResponse;
+}
+
+/**
+ * Format event details response
+ */
+function formatEventDetails(event: Event): string {
+  let formattedResponse = `## ${event.name}\n\n`;
+  
+  if (event.description) {
+    formattedResponse += `${event.description}\n\n`;
+  }
+  
+  formattedResponse += '### Event Details\n\n';
+  
+  if (event.time_start) {
+    const startDate = new Date(event.time_start).toLocaleString();
+    formattedResponse += `**Date**: ${startDate}`;
+    
+    if (event.time_end) {
+      const endDate = new Date(event.time_end).toLocaleString();
+      formattedResponse += ` to ${endDate}`;
+    }
+    
+    formattedResponse += '\n';
+  }
+  
+  if (event.location) {
+    formattedResponse += '**Location**: ';
+    if (event.location.display_address) {
+      formattedResponse += event.location.display_address.join(', ');
+    } else {
+      const addressParts = [];
+      if (event.location.address1) addressParts.push(event.location.address1);
+      if (event.location.address2) addressParts.push(event.location.address2);
+      if (event.location.address3) addressParts.push(event.location.address3);
+      
+      if (event.location.city) {
+        const cityStateParts = [event.location.city];
+        if (event.location.state) cityStateParts.push(event.location.state);
+        if (event.location.zip_code) cityStateParts.push(event.location.zip_code);
+        addressParts.push(cityStateParts.join(', '));
+      }
+      
+      if (event.location.country) addressParts.push(event.location.country);
+      
+      formattedResponse += addressParts.join(', ');
+    }
+    formattedResponse += '\n';
+  }
+  
+  if (event.is_free !== undefined) {
+    formattedResponse += `**Cost**: ${event.is_free ? 'Free' : event.cost ? '$' + event.cost : 'Paid'}\n`;
+  }
+  
+  if (event.category) {
+    formattedResponse += `**Category**: ${event.category}\n`;
+  }
+  
+  if (event.business_id) {
+    formattedResponse += `**Hosted by**: Business ID ${event.business_id}\n`;
+  }
+  
+  formattedResponse += '\n### Attendance\n\n';
+  
+  if (event.attending_count !== undefined) {
+    formattedResponse += `**Going**: ${event.attending_count} people\n`;
+  }
+  
+  if (event.interested_count !== undefined) {
+    formattedResponse += `**Interested**: ${event.interested_count} people\n`;
+  }
+  
+  formattedResponse += '\n';
+  
+  if (event.tickets_url) {
+    formattedResponse += `**Tickets**: ${event.tickets_url}\n\n`;
+  }
+  
+  if (event.url) {
+    formattedResponse += `**Event page**: ${event.url}\n\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format featured event response
+ */
+function formatFeaturedEventResponse(response: FeaturedEventResponse): string {
+  let formattedResponse = '## Featured Event\n\n';
+  formattedResponse += formatEventDetails(response.featured_event);
   return formattedResponse;
 }
 

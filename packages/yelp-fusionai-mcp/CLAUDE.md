@@ -37,6 +37,11 @@
 - yelpEventDetails - Get detailed information about a specific event
 - yelpFeaturedEvent - Get the featured event for a location
 
+### Events Tools
+- yelpEventsSearch - Search for events in a location
+- yelpEventDetails - Get detailed information about a specific event
+- yelpFeaturedEvent - Get the featured event for a location
+
 ### Categories Tools
 - yelpGetCategories - Get all business categories from Yelp
 - yelpGetCategoryDetails - Get detailed information about a specific category
