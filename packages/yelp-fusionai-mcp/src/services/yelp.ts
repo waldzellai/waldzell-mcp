@@ -10,6 +10,7 @@ import respondReviewsClient from './api/respond-reviews';
 import reportingV2Client from './api/reporting-v2';
 import businessSubscriptionsClient from './api/business-subscriptions';
 import checkoutClient from './api/checkout';
+import claimBusinessClient from './api/claim-business';
 
 /**
  * Yelp AI Response interface
@@ -99,6 +100,11 @@ class YelpService {
    * Checkout API client
    */
   readonly checkout = checkoutClient;
+  
+  /**
+   * Claim Business API client
+   */
+  readonly claimBusiness = claimBusinessClient;
 }
 
 export default new YelpService();

@@ -31,6 +31,13 @@ import {
   Payment,
   PaymentsResponse
 } from './services/api/checkout';
+import {
+  ClaimEligibility,
+  ClaimResponse,
+  ClaimStatus,
+  VerificationResponse,
+  DocumentUploadResponse
+} from './services/api/claim-business';
 
 // Define our implementation
 const server = new McpServer({
@@ -86,6 +93,13 @@ const server = new McpServer({
   - yelpGetPayments: Get a list of payments
   - yelpGetPayment: Get details for a specific payment
   - yelpRefundPayment: Request a refund for a payment
+  
+  Claim Business Tools:
+  - yelpCheckClaimEligibility: Check if a business is eligible for claiming
+  - yelpSubmitBusinessClaim: Submit a claim for a business
+  - yelpGetClaimStatus: Get the status of a business claim
+  - yelpVerifyClaimCode: Submit verification code for a claim
+  - yelpCancelClaim: Cancel a pending business claim
   
   OAuth Tools:
   - yelpGetOAuthToken: Get an OAuth access token (v2 or v3)
@@ -863,6 +877,165 @@ const server = new McpServer({
               {
                 type: 'text',
                 text: `Error refunding payment: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    // Claim Business Tools
+    yelpCheckClaimEligibility: {
+      description: "Check if a business is eligible for claiming",
+      schema: z.object({
+        business_id: z.string().describe('Business ID to check eligibility for'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.claimBusiness.checkEligibility(args.business_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatClaimEligibilityResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error checking claim eligibility: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpSubmitBusinessClaim: {
+      description: "Submit a claim for a business",
+      schema: z.object({
+        business_id: z.string().describe('Business ID to claim'),
+        full_name: z.string().describe('Full name of the business owner or authorized representative'),
+        email: z.string().describe('Email address'),
+        phone: z.string().describe('Phone number'),
+        job_title: z.string().optional().describe('Job title or role at the business'),
+        verification_method: z.enum(['phone', 'email', 'mail', 'document']).optional().describe('Preferred verification method'),
+        website_url: z.string().optional().describe('Business website URL'),
+        notes: z.string().optional().describe('Additional notes or comments'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.claimBusiness.submitClaim(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatClaimResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error submitting business claim: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetClaimStatus: {
+      description: "Get the status of a business claim",
+      schema: z.object({
+        claim_id: z.string().describe('Claim ID to check status for'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.claimBusiness.getClaimStatus(args.claim_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatClaimStatusResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting claim status: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpVerifyClaimCode: {
+      description: "Submit verification code for a claim",
+      schema: z.object({
+        claim_id: z.string().describe('Claim ID to verify'),
+        verification_code: z.string().describe('Verification code provided by Yelp'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.claimBusiness.verifyCode(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatVerificationResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error verifying claim code: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpCancelClaim: {
+      description: "Cancel a pending business claim",
+      schema: z.object({
+        claim_id: z.string().describe('Claim ID to cancel'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.claimBusiness.cancelClaim(args.claim_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Claim cancellation status: ${response.success ? '✅ Successfully canceled' : '❌ Failed to cancel'}`
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error canceling claim: ${(error as Error).message}`
               }
             ]
           };
@@ -1875,6 +2048,192 @@ function formatEventDetails(event: Event): string {
 function formatFeaturedEventResponse(response: FeaturedEventResponse): string {
   let formattedResponse = '## Featured Event\n\n';
   formattedResponse += formatEventDetails(response.featured_event);
+  return formattedResponse;
+}
+
+/**
+ * Format claim eligibility response
+ */
+function formatClaimEligibilityResponse(response: ClaimEligibility): string {
+  let formattedResponse = '## Business Claim Eligibility\n\n';
+  
+  formattedResponse += `Business ID: ${response.business_id}\n`;
+  formattedResponse += `Eligibility: ${response.eligible ? '✅ Eligible' : '❌ Not Eligible'}\n`;
+  
+  if (response.claim_status) {
+    const statusMap: Record<string, string> = {
+      'unclaimed': '📝 Unclaimed',
+      'claimed': '✅ Already Claimed',
+      'pending': '⏳ Claim Pending',
+      'ineligible': '❌ Ineligible'
+    };
+    
+    const formattedStatus = statusMap[response.claim_status] || response.claim_status;
+    formattedResponse += `Claim Status: ${formattedStatus}\n`;
+  }
+  
+  if (response.ineligibility_reason) {
+    formattedResponse += `\n### Ineligibility Reason\n${response.ineligibility_reason}\n`;
+  }
+  
+  if (response.details) {
+    formattedResponse += `\n### Additional Details\n${response.details}\n`;
+  }
+  
+  if (response.available_methods && response.available_methods.length > 0) {
+    formattedResponse += '\n### Available Verification Methods\n';
+    response.available_methods.forEach(method => {
+      formattedResponse += `- ${method.charAt(0).toUpperCase() + method.slice(1)}\n`;
+    });
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format claim response
+ */
+function formatClaimResponse(response: ClaimResponse): string {
+  let formattedResponse = '## Business Claim Submitted\n\n';
+  
+  formattedResponse += `Claim ID: ${response.claim_id}\n`;
+  formattedResponse += `Business ID: ${response.business_id}\n`;
+  
+  const statusMap: Record<string, string> = {
+    'pending': '⏳ Pending',
+    'approved': '✅ Approved',
+    'rejected': '❌ Rejected',
+    'verification_needed': '🔍 Verification Needed'
+  };
+  
+  const formattedStatus = statusMap[response.status] || response.status;
+  formattedResponse += `Status: ${formattedStatus}\n`;
+  formattedResponse += `Verification Method: ${response.verification_method.charAt(0).toUpperCase() + response.verification_method.slice(1)}\n`;
+  
+  if (response.verification_code) {
+    formattedResponse += `\n### Verification Code\n${response.verification_code}\n`;
+  }
+  
+  if (response.verification_instructions) {
+    formattedResponse += `\n### Verification Instructions\n${response.verification_instructions}\n`;
+  }
+  
+  if (response.verification_expires_at) {
+    const expiresDate = new Date(response.verification_expires_at).toLocaleString();
+    formattedResponse += `\n**Verification Expires**: ${expiresDate}\n`;
+  }
+  
+  const createdDate = new Date(response.created_at).toLocaleDateString();
+  formattedResponse += `\nSubmitted: ${createdDate}\n`;
+  
+  return formattedResponse;
+}
+
+/**
+ * Format claim status response
+ */
+function formatClaimStatusResponse(response: ClaimStatus): string {
+  let formattedResponse = '## Business Claim Status\n\n';
+  
+  formattedResponse += `Claim ID: ${response.claim_id}\n`;
+  formattedResponse += `Business ID: ${response.business_id}\n`;
+  
+  const statusMap: Record<string, string> = {
+    'pending': '⏳ Pending',
+    'approved': '✅ Approved',
+    'rejected': '❌ Rejected',
+    'verification_needed': '🔍 Verification Needed'
+  };
+  
+  const formattedStatus = statusMap[response.status] || response.status;
+  formattedResponse += `Status: ${formattedStatus}\n`;
+  
+  if (response.status_message) {
+    formattedResponse += `Status Message: ${response.status_message}\n`;
+  }
+  
+  formattedResponse += `Verification Method: ${response.verification_method.charAt(0).toUpperCase() + response.verification_method.slice(1)}\n`;
+  formattedResponse += `Verification Completed: ${response.verification_completed ? 'Yes' : 'No'}\n`;
+  
+  if (response.decision_date) {
+    const decisionDate = new Date(response.decision_date).toLocaleDateString();
+    formattedResponse += `Decision Date: ${decisionDate}\n`;
+  }
+  
+  const createdDate = new Date(response.created_at).toLocaleDateString();
+  const updatedDate = new Date(response.updated_at).toLocaleDateString();
+  
+  formattedResponse += `Created: ${createdDate}\n`;
+  formattedResponse += `Last Updated: ${updatedDate}\n`;
+  
+  if (response.next_steps) {
+    formattedResponse += `\n### Next Steps\n${response.next_steps}\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format verification response
+ */
+function formatVerificationResponse(response: VerificationResponse): string {
+  let formattedResponse = '## Verification Result\n\n';
+  
+  formattedResponse += `Claim ID: ${response.claim_id}\n`;
+  formattedResponse += `Verification: ${response.success ? '✅ Successful' : '❌ Failed'}\n`;
+  
+  const statusMap: Record<string, string> = {
+    'pending': '⏳ Pending',
+    'approved': '✅ Approved',
+    'rejected': '❌ Rejected',
+    'verification_needed': '🔍 Verification Needed'
+  };
+  
+  const formattedStatus = statusMap[response.claim_status] || response.claim_status;
+  formattedResponse += `Claim Status: ${formattedStatus}\n`;
+  
+  if (response.error_message) {
+    formattedResponse += `\n### Error\n${response.error_message}\n`;
+  }
+  
+  if (response.next_steps) {
+    formattedResponse += `\n### Next Steps\n${response.next_steps}\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format document upload response
+ */
+function formatDocumentUploadResponse(response: DocumentUploadResponse): string {
+  let formattedResponse = '## Document Upload\n\n';
+  
+  formattedResponse += `Upload ID: ${response.upload_id}\n`;
+  formattedResponse += `Claim ID: ${response.claim_id}\n`;
+  
+  const statusMap: Record<string, string> = {
+    'pending': '⏳ Pending Review',
+    'approved': '✅ Approved',
+    'rejected': '❌ Rejected'
+  };
+  
+  const formattedStatus = statusMap[response.status] || response.status;
+  formattedResponse += `Status: ${formattedStatus}\n`;
+  
+  const documentTypeMap: Record<string, string> = {
+    'business_license': 'Business License',
+    'utility_bill': 'Utility Bill',
+    'tax_document': 'Tax Document',
+    'other': 'Other Document'
+  };
+  
+  const formattedType = documentTypeMap[response.document_type] || response.document_type;
+  formattedResponse += `Document Type: ${formattedType}\n`;
+  
+  const createdDate = new Date(response.created_at).toLocaleDateString();
+  formattedResponse += `Uploaded: ${createdDate}\n`;
+  
   return formattedResponse;
 }
 
