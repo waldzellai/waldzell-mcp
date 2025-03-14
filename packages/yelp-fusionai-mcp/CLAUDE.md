@@ -81,6 +81,18 @@
 - yelpGetSubscriptionUsage - Get subscription usage data
 - yelpGetSubscriptionHistory - Get subscription history
 
+### Checkout Tools
+- yelpGetPaymentMethods - Get a list of payment methods
+- yelpGetPaymentMethod - Get details for a specific payment method
+- yelpCreatePaymentMethod - Create a new payment method
+- yelpDeletePaymentMethod - Delete a payment method
+- yelpGetInvoices - Get a list of invoices
+- yelpGetInvoice - Get details for a specific invoice
+- yelpPayInvoice - Pay an invoice using a payment method
+- yelpGetPayments - Get a list of payments
+- yelpGetPayment - Get details for a specific payment
+- yelpRefundPayment - Request a refund for a payment
+
 ### Respond Reviews Tools
 - yelpRespondReviewsGetToken - Get an OAuth access token for responding to reviews
 - yelpRespondReviewsBusinesses - Get businesses that the user can respond to reviews for

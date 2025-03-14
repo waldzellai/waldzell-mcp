@@ -9,6 +9,7 @@ import waitlistPartnerClient from './api/waitlist-partner';
 import respondReviewsClient from './api/respond-reviews';
 import reportingV2Client from './api/reporting-v2';
 import businessSubscriptionsClient from './api/business-subscriptions';
+import checkoutClient from './api/checkout';
 
 /**
  * Yelp AI Response interface
@@ -93,6 +94,11 @@ class YelpService {
    * Business Subscriptions API client
    */
   readonly businessSubscriptions = businessSubscriptionsClient;
+  
+  /**
+   * Checkout API client
+   */
+  readonly checkout = checkoutClient;
 }
 
 export default new YelpService();

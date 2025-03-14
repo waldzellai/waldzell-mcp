@@ -23,6 +23,14 @@ import {
   EventSearchResponse,
   FeaturedEventResponse
 } from './services/api/events';
+import {
+  PaymentMethod,
+  PaymentMethodsResponse,
+  Invoice,
+  InvoicesResponse,
+  Payment,
+  PaymentsResponse
+} from './services/api/checkout';
 
 // Define our implementation
 const server = new McpServer({
@@ -66,6 +74,18 @@ const server = new McpServer({
   - yelpCancelSubscription: Cancel a subscription
   - yelpGetSubscriptionUsage: Get subscription usage data
   - yelpGetSubscriptionHistory: Get subscription history
+  
+  Checkout Tools:
+  - yelpGetPaymentMethods: Get a list of payment methods
+  - yelpGetPaymentMethod: Get details for a specific payment method
+  - yelpCreatePaymentMethod: Create a new payment method
+  - yelpDeletePaymentMethod: Delete a payment method
+  - yelpGetInvoices: Get a list of invoices
+  - yelpGetInvoice: Get details for a specific invoice
+  - yelpPayInvoice: Pay an invoice using a payment method
+  - yelpGetPayments: Get a list of payments
+  - yelpGetPayment: Get details for a specific payment
+  - yelpRefundPayment: Request a refund for a payment
   
   OAuth Tools:
   - yelpGetOAuthToken: Get an OAuth access token (v2 or v3)
@@ -509,6 +529,340 @@ const server = new McpServer({
               {
                 type: 'text',
                 text: `Error getting subscription history: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    // Checkout Tools
+    yelpGetPaymentMethods: {
+      description: "Get a list of payment methods",
+      schema: z.object({
+        business_id: z.string().optional().describe('Optional business ID to filter by'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getPaymentMethods(args.business_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentMethodsResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting payment methods: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetPaymentMethod: {
+      description: "Get details for a specific payment method",
+      schema: z.object({
+        payment_method_id: z.string().describe('Payment method ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getPaymentMethod(args.payment_method_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentMethodDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting payment method: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpCreatePaymentMethod: {
+      description: "Create a new payment method",
+      schema: z.object({
+        payment_token: z.string().describe('Payment token from the payment processor'),
+        set_default: z.boolean().optional().describe('Set as default payment method'),
+        business_id: z.string().optional().describe('Business ID to associate with'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const request = {
+            payment_token: args.payment_token,
+            set_default: args.set_default,
+            business_id: args.business_id
+          };
+          
+          const response = await yelpService.checkout.createPaymentMethod(request);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentMethodDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error creating payment method: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpDeletePaymentMethod: {
+      description: "Delete a payment method",
+      schema: z.object({
+        payment_method_id: z.string().describe('Payment method ID to delete'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.deletePaymentMethod(args.payment_method_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Payment method deletion status: ${response.success ? 'Successful' : 'Failed'}`
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error deleting payment method: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetInvoices: {
+      description: "Get a list of invoices",
+      schema: z.object({
+        business_id: z.string().optional().describe('Business ID to filter by'),
+        subscription_id: z.string().optional().describe('Subscription ID to filter by'),
+        limit: z.number().optional().describe('Number of results to return (max 50)'),
+        offset: z.number().optional().describe('Offset the list of returned results by this amount'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getInvoices(
+            args.business_id,
+            args.subscription_id,
+            args.limit,
+            args.offset
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatInvoicesResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting invoices: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetInvoice: {
+      description: "Get details for a specific invoice",
+      schema: z.object({
+        invoice_id: z.string().describe('Invoice ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getInvoice(args.invoice_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatInvoiceDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting invoice: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpPayInvoice: {
+      description: "Pay an invoice using a payment method",
+      schema: z.object({
+        invoice_id: z.string().describe('Invoice ID to pay'),
+        payment_method_id: z.string().describe('Payment method ID to use'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.payInvoice(args.invoice_id, args.payment_method_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error paying invoice: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetPayments: {
+      description: "Get a list of payments",
+      schema: z.object({
+        business_id: z.string().optional().describe('Business ID to filter by'),
+        subscription_id: z.string().optional().describe('Subscription ID to filter by'),
+        invoice_id: z.string().optional().describe('Invoice ID to filter by'),
+        limit: z.number().optional().describe('Number of results to return (max 50)'),
+        offset: z.number().optional().describe('Offset the list of returned results by this amount'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getPayments(
+            args.business_id,
+            args.subscription_id,
+            args.invoice_id,
+            args.limit,
+            args.offset
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentsResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting payments: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetPayment: {
+      description: "Get details for a specific payment",
+      schema: z.object({
+        payment_id: z.string().describe('Payment ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.getPayment(args.payment_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting payment: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpRefundPayment: {
+      description: "Request a refund for a payment",
+      schema: z.object({
+        payment_id: z.string().describe('Payment ID to refund'),
+        amount_cents: z.number().optional().describe('Amount to refund in cents (default: full amount)'),
+        reason: z.string().optional().describe('Reason for the refund'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.checkout.refundPayment(
+            args.payment_id,
+            args.amount_cents,
+            args.reason
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatPaymentDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error refunding payment: ${(error as Error).message}`
               }
             ]
           };
@@ -1160,6 +1514,214 @@ function formatEventDetails(event: Event): string {
 function formatFeaturedEventResponse(response: FeaturedEventResponse): string {
   let formattedResponse = '## Featured Event\n\n';
   formattedResponse += formatEventDetails(response.featured_event);
+  return formattedResponse;
+}
+
+/**
+ * Format payment methods response
+ */
+function formatPaymentMethodsResponse(response: PaymentMethodsResponse): string {
+  let formattedResponse = '## Payment Methods\n\n';
+  
+  if (response.total !== undefined) {
+    formattedResponse += `Total: ${response.total} payment methods\n\n`;
+  }
+  
+  if (response.payment_methods.length === 0) {
+    formattedResponse += 'No payment methods found.\n';
+    return formattedResponse;
+  }
+  
+  response.payment_methods.forEach((method, index) => {
+    formattedResponse += `### ${index + 1}. Payment Method\n`;
+    formattedResponse += `ID: ${method.payment_method_id}\n`;
+    formattedResponse += `Type: ${method.type}\n`;
+    formattedResponse += `Status: ${method.status}\n`;
+    formattedResponse += `Default: ${method.is_default ? 'Yes' : 'No'}\n`;
+    
+    if (method.card_details) {
+      formattedResponse += `Card: ${method.card_details.brand} ending in ${method.card_details.last4}\n`;
+      formattedResponse += `Expires: ${method.card_details.exp_month}/${method.card_details.exp_year}\n`;
+    }
+    
+    const createdDate = new Date(method.created_at).toLocaleDateString();
+    formattedResponse += `Created: ${createdDate}\n\n`;
+  });
+  
+  return formattedResponse;
+}
+
+/**
+ * Format payment method details
+ */
+function formatPaymentMethodDetails(method: PaymentMethod): string {
+  let formattedResponse = '## Payment Method Details\n\n';
+  
+  formattedResponse += `ID: ${method.payment_method_id}\n`;
+  formattedResponse += `Type: ${method.type}\n`;
+  formattedResponse += `Status: ${method.status}\n`;
+  formattedResponse += `Default: ${method.is_default ? 'Yes' : 'No'}\n`;
+  
+  if (method.card_details) {
+    formattedResponse += '\n### Card Details\n\n';
+    formattedResponse += `Brand: ${method.card_details.brand}\n`;
+    formattedResponse += `Last 4 Digits: ${method.card_details.last4}\n`;
+    formattedResponse += `Expiration: ${method.card_details.exp_month}/${method.card_details.exp_year}\n`;
+  }
+  
+  const createdDate = new Date(method.created_at).toLocaleDateString();
+  const updatedDate = new Date(method.updated_at).toLocaleDateString();
+  
+  formattedResponse += '\n### Dates\n\n';
+  formattedResponse += `Created: ${createdDate}\n`;
+  formattedResponse += `Last Updated: ${updatedDate}\n`;
+  
+  return formattedResponse;
+}
+
+/**
+ * Format invoices response
+ */
+function formatInvoicesResponse(response: InvoicesResponse): string {
+  let formattedResponse = '## Invoices\n\n';
+  
+  if (response.total !== undefined) {
+    formattedResponse += `Total: ${response.total} invoices\n\n`;
+  }
+  
+  if (response.invoices.length === 0) {
+    formattedResponse += 'No invoices found.\n';
+    return formattedResponse;
+  }
+  
+  formattedResponse += '| Invoice # | Date | Amount | Status |\n';
+  formattedResponse += '| --------- | ---- | ------ | ------ |\n';
+  
+  response.invoices.forEach(invoice => {
+    const issueDate = new Date(invoice.issue_date).toLocaleDateString();
+    const amount = `$${(invoice.amount_cents / 100).toFixed(2)}`;
+    const status = invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
+    formattedResponse += `| [${invoice.invoice_number}](${invoice.portal_url || '#'}) | ${issueDate} | ${amount} | ${status} |\n`;
+  });
+  
+  formattedResponse += '\nClick on an invoice number to view details.\n';
+  
+  return formattedResponse;
+}
+
+/**
+ * Format invoice details
+ */
+function formatInvoiceDetails(invoice: Invoice): string {
+  let formattedResponse = `## Invoice #${invoice.invoice_number}\n\n`;
+  
+  formattedResponse += `ID: ${invoice.invoice_id}\n`;
+  
+  if (invoice.business_id) {
+    formattedResponse += `Business ID: ${invoice.business_id}\n`;
+  }
+  
+  if (invoice.subscription_id) {
+    formattedResponse += `Subscription ID: ${invoice.subscription_id}\n`;
+  }
+  
+  formattedResponse += `Amount: $${(invoice.amount_cents / 100).toFixed(2)} ${invoice.currency}\n`;
+  formattedResponse += `Status: ${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}\n`;
+  
+  const issueDate = new Date(invoice.issue_date).toLocaleDateString();
+  const dueDate = new Date(invoice.due_date).toLocaleDateString();
+  
+  formattedResponse += `Issue Date: ${issueDate}\n`;
+  formattedResponse += `Due Date: ${dueDate}\n`;
+  
+  if (invoice.payment_date) {
+    const paymentDate = new Date(invoice.payment_date).toLocaleDateString();
+    formattedResponse += `Payment Date: ${paymentDate}\n`;
+  }
+  
+  if (invoice.line_items && invoice.line_items.length > 0) {
+    formattedResponse += '\n### Line Items\n\n';
+    formattedResponse += '| Description | Type | Quantity | Amount |\n';
+    formattedResponse += '| ----------- | ---- | -------- | ------ |\n';
+    
+    invoice.line_items.forEach(item => {
+      const type = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+      const amount = `$${(item.amount_cents / 100).toFixed(2)}`;
+      formattedResponse += `| ${item.description} | ${type} | ${item.quantity} | ${amount} |\n`;
+    });
+  }
+  
+  if (invoice.pdf_url) {
+    formattedResponse += `\n[Download PDF Invoice](${invoice.pdf_url})\n`;
+  }
+  
+  if (invoice.portal_url) {
+    formattedResponse += `\n[View in Portal](${invoice.portal_url})\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format payments response
+ */
+function formatPaymentsResponse(response: PaymentsResponse): string {
+  let formattedResponse = '## Payments\n\n';
+  
+  if (response.total !== undefined) {
+    formattedResponse += `Total: ${response.total} payments\n\n`;
+  }
+  
+  if (response.payments.length === 0) {
+    formattedResponse += 'No payments found.\n';
+    return formattedResponse;
+  }
+  
+  formattedResponse += '| Date | Amount | Status | Invoice # |\n';
+  formattedResponse += '| ---- | ------ | ------ | --------- |\n';
+  
+  response.payments.forEach(payment => {
+    const paymentDate = new Date(payment.payment_date).toLocaleDateString();
+    const amount = `$${(payment.amount_cents / 100).toFixed(2)}`;
+    const status = payment.status.charAt(0).toUpperCase() + payment.status.slice(1);
+    formattedResponse += `| ${paymentDate} | ${amount} | ${status} | ${payment.invoice_id} |\n`;
+  });
+  
+  return formattedResponse;
+}
+
+/**
+ * Format payment details
+ */
+function formatPaymentDetails(payment: Payment): string {
+  let formattedResponse = '## Payment Details\n\n';
+  
+  formattedResponse += `Payment ID: ${payment.payment_id}\n`;
+  formattedResponse += `Invoice ID: ${payment.invoice_id}\n`;
+  
+  if (payment.business_id) {
+    formattedResponse += `Business ID: ${payment.business_id}\n`;
+  }
+  
+  if (payment.subscription_id) {
+    formattedResponse += `Subscription ID: ${payment.subscription_id}\n`;
+  }
+  
+  formattedResponse += `Amount: $${(payment.amount_cents / 100).toFixed(2)} ${payment.currency}\n`;
+  formattedResponse += `Status: ${payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}\n`;
+  formattedResponse += `Payment Method ID: ${payment.payment_method_id}\n`;
+  
+  const paymentDate = new Date(payment.payment_date).toLocaleDateString();
+  formattedResponse += `Payment Date: ${paymentDate}\n`;
+  
+  if (payment.failure_reason) {
+    formattedResponse += `\n### Failure Details\n\nReason: ${payment.failure_reason}\n`;
+  }
+  
+  if (payment.receipt_url) {
+    formattedResponse += `\n[View Receipt](${payment.receipt_url})\n`;
+  }
+  
   return formattedResponse;
 }
 
