@@ -129,6 +129,24 @@
 - yelpCancelDataIngestionJob - Cancel a data ingestion job
 - yelpRetryDataIngestionJob - Retry a failed data ingestion job
 
+### Leads Management Tools
+- yelpGetLeads - Get list of leads with optional filtering
+- yelpGetLead - Get details about a specific lead
+- yelpCreateLead - Create a new lead
+- yelpUpdateLead - Update an existing lead
+- yelpDeleteLead - Delete a lead
+- yelpGetLeadNotes - Get notes for a lead
+- yelpAddLeadNote - Add a note to a lead
+- yelpDeleteLeadNote - Delete a note from a lead
+- yelpGetLeadActivities - Get activity history for a lead
+- yelpAddLeadActivity - Add an activity to a lead
+- yelpBulkUpdateLeads - Update multiple leads in bulk
+- yelpBulkDeleteLeads - Delete multiple leads in bulk
+- yelpImportLeads - Import leads from a data source
+- yelpExportLeads - Export leads to a file
+- yelpGetExportStatus - Check status of an export job
+- yelpGetLeadStatistics - Get statistics about leads
+
 ### Respond Reviews Tools
 - yelpRespondReviewsGetToken - Get an OAuth access token for responding to reviews
 - yelpRespondReviewsBusinesses - Get businesses that the user can respond to reviews for
