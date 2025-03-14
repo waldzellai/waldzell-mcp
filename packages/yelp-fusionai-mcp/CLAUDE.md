@@ -33,10 +33,14 @@
 - yelpBusinessDetails - Get business details by ID
 - yelpBusinessReviews - Get business reviews
 - yelpReviewHighlights - Get highlighted snippets from reviews
-- yelpCategories - Get all business categories
 - yelpEventsSearch - Search for events in a location
 - yelpEventDetails - Get detailed information about a specific event
 - yelpFeaturedEvent - Get the featured event for a location
+
+### Categories Tools
+- yelpGetCategories - Get all business categories from Yelp
+- yelpGetCategoryDetails - Get detailed information about a specific category
+- yelpSearchCategories - Search for business categories by name
 
 ### Advertising Tools
 - yelpCreateAdProgram - Create a new advertising program

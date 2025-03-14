@@ -14,6 +14,10 @@ import {
   SubscriptionUsage,
   SubscriptionHistory
 } from './services/api/business-subscriptions';
+import {
+  Category,
+  CategoriesResponse
+} from './services/api/categories';
 
 // Define our implementation
 const server = new McpServer({
@@ -30,10 +34,14 @@ const server = new McpServer({
   - yelpBusinessDetails: Get business details by ID
   - yelpBusinessReviews: Get business reviews
   - yelpReviewHighlights: Get highlighted snippets from reviews
-  - yelpCategories: Get all business categories
   - yelpEventsSearch: Search for events in a location
   - yelpEventDetails: Get detailed information about a specific event
   - yelpFeaturedEvent: Get the featured event for a location
+  
+  Categories Tools:
+  - yelpGetCategories: Get all business categories from Yelp
+  - yelpGetCategoryDetails: Get detailed information about a specific category
+  - yelpSearchCategories: Search for business categories by name
   
   Advertising Tools:
   - yelpCreateAdProgram: Create a new advertising program
@@ -77,6 +85,104 @@ const server = new McpServer({
   `,
   
   tools: {
+    // Categories Tools
+    yelpGetCategories: {
+      description: "Get all business categories from Yelp",
+      schema: z.object({
+        locale: z.string().optional().describe('Optional locale parameter (e.g., "en_US")'),
+        country: z.string().optional().describe('Optional country code parameter (e.g., "US")'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.categories.getAll(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatCategoriesResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting categories: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetCategoryDetails: {
+      description: "Get detailed information about a specific business category",
+      schema: z.object({
+        alias: z.string().describe('The category alias/slug (e.g., "restaurants", "italian")'),
+        locale: z.string().optional().describe('Optional locale parameter (e.g., "en_US")'),
+        country: z.string().optional().describe('Optional country code parameter (e.g., "US")'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const { alias, ...params } = args;
+          const response = await yelpService.categories.getCategory(alias, params);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatCategoryDetails(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting category details: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpSearchCategories: {
+      description: "Search for business categories by name",
+      schema: z.object({
+        term: z.string().describe('The search term to match against category titles'),
+        locale: z.string().optional().describe('Optional locale parameter (e.g., "en_US")'),
+        country: z.string().optional().describe('Optional country code parameter (e.g., "US")'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const { term, ...params } = args;
+          const response = await yelpService.categories.searchCategories(term, params);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatCategoriesResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error searching categories: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
     // Business Subscriptions Tools
     yelpGetSubscriptionPlans: {
       description: "Get available subscription plans",
@@ -704,6 +810,95 @@ function formatEventType(eventType: string): string {
     default:
       return eventType.charAt(0).toUpperCase() + eventType.slice(1);
   }
+}
+
+/**
+ * Format categories response
+ */
+function formatCategoriesResponse(response: CategoriesResponse): string {
+  let formattedResponse = '## Yelp Business Categories\n\n';
+  
+  if (response.categories.length === 0) {
+    formattedResponse += 'No categories found.\n';
+    return formattedResponse;
+  }
+  
+  formattedResponse += `Found ${response.categories.length} categories.\n\n`;
+  
+  // Group categories by parent
+  const topLevelCategories = response.categories.filter(cat => !cat.parent_aliases || cat.parent_aliases.length === 0);
+  const childCategories = response.categories.filter(cat => cat.parent_aliases && cat.parent_aliases.length > 0);
+  
+  // List top-level categories first
+  if (topLevelCategories.length > 0) {
+    formattedResponse += '### Top-Level Categories\n\n';
+    topLevelCategories.forEach(cat => {
+      formattedResponse += `- ${cat.title} (${cat.alias})\n`;
+    });
+    formattedResponse += '\n';
+  }
+  
+  // Then categorize others by their first parent
+  if (childCategories.length > 0) {
+    formattedResponse += '### Sub-Categories\n\n';
+    
+    // Group by first parent
+    const groupedByParent: Record<string, Category[]> = {};
+    childCategories.forEach(cat => {
+      if (cat.parent_aliases && cat.parent_aliases.length > 0) {
+        const parentAlias = cat.parent_aliases[0];
+        if (!groupedByParent[parentAlias]) {
+          groupedByParent[parentAlias] = [];
+        }
+        groupedByParent[parentAlias].push(cat);
+      }
+    });
+    
+    // Output each group
+    Object.keys(groupedByParent).sort().forEach(parentAlias => {
+      const parentTitle = response.categories.find(c => c.alias === parentAlias)?.title || parentAlias;
+      formattedResponse += `**${parentTitle}**\n`;
+      
+      groupedByParent[parentAlias].sort((a, b) => a.title.localeCompare(b.title)).forEach(cat => {
+        formattedResponse += `- ${cat.title} (${cat.alias})\n`;
+      });
+      
+      formattedResponse += '\n';
+    });
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format category details response
+ */
+function formatCategoryDetails(category: Category): string {
+  let formattedResponse = `## Category: ${category.title}\n\n`;
+  
+  formattedResponse += `Alias: ${category.alias}\n\n`;
+  
+  if (category.parent_aliases && category.parent_aliases.length > 0) {
+    formattedResponse += '### Parent Categories\n';
+    for (let i = 0; i < category.parent_aliases.length; i++) {
+      const parentAlias = category.parent_aliases[i];
+      const parentTitle = category.parent_titles?.[i] || parentAlias;
+      formattedResponse += `- ${parentTitle} (${parentAlias})\n`;
+    }
+    formattedResponse += '\n';
+  }
+  
+  if (category.country_whitelist && category.country_whitelist.length > 0) {
+    formattedResponse += '### Available In\n';
+    formattedResponse += category.country_whitelist.join(', ') + '\n\n';
+  }
+  
+  if (category.country_blacklist && category.country_blacklist.length > 0) {
+    formattedResponse += '### Not Available In\n';
+    formattedResponse += category.country_blacklist.join(', ') + '\n\n';
+  }
+  
+  return formattedResponse;
 }
 
 // Start the server using stdio transport
