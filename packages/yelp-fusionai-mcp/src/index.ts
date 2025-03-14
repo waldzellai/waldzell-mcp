@@ -8,6 +8,12 @@ import {
   BusinessOwnerInfo,
   RespondToReviewResponse
 } from './services/api/respond-reviews';
+import {
+  SubscriptionPlansResponse,
+  ActiveSubscription,
+  SubscriptionUsage,
+  SubscriptionHistory
+} from './services/api/business-subscriptions';
 
 // Define our implementation
 const server = new McpServer({
@@ -39,6 +45,15 @@ const server = new McpServer({
   - yelpResumeAdProgram: Resume a paused advertising program
   - yelpTerminateAdProgram: Terminate an advertising program
   
+  Business Subscriptions Tools:
+  - yelpGetSubscriptionPlans: Get available subscription plans
+  - yelpGetActiveSubscription: Get active subscription for a business
+  - yelpCreateSubscription: Create a new subscription
+  - yelpUpdateSubscription: Update an existing subscription
+  - yelpCancelSubscription: Cancel a subscription
+  - yelpGetSubscriptionUsage: Get subscription usage data
+  - yelpGetSubscriptionHistory: Get subscription history
+  
   OAuth Tools:
   - yelpGetOAuthToken: Get an OAuth access token (v2 or v3)
   - yelpRefreshOAuthToken: Refresh an OAuth v3 access token
@@ -62,6 +77,229 @@ const server = new McpServer({
   `,
   
   tools: {
+    // Business Subscriptions Tools
+    yelpGetSubscriptionPlans: {
+      description: "Get available subscription plans",
+      schema: z.object({
+        business_id: z.string().optional().describe('Optional business ID to filter plans available for a specific business'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.businessSubscriptions.getSubscriptionPlans(args.business_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatSubscriptionPlansResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting subscription plans: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetActiveSubscription: {
+      description: "Get active subscription for a business",
+      schema: z.object({
+        business_id: z.string().describe('Business ID to get the active subscription for'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.businessSubscriptions.getActiveSubscription(args.business_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatActiveSubscriptionResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting active subscription: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpCreateSubscription: {
+      description: "Create a new subscription",
+      schema: z.object({
+        business_id: z.string().describe('Business ID'),
+        plan_id: z.string().describe('Plan ID to subscribe to'),
+        auto_renew: z.boolean().optional().describe('Whether the subscription should auto-renew'),
+        payment_method_id: z.string().optional().describe('Payment method ID to use for billing'),
+        promo_code: z.string().optional().describe('Promo code to apply to the subscription'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.businessSubscriptions.createSubscription(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatActiveSubscriptionResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error creating subscription: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpUpdateSubscription: {
+      description: "Update an existing subscription",
+      schema: z.object({
+        subscription_id: z.string().describe('Subscription ID to update'),
+        auto_renew: z.boolean().optional().describe('Whether the subscription should auto-renew'),
+        payment_method_id: z.string().optional().describe('Payment method ID to use for billing'),
+        plan_id: z.string().optional().describe('Plan ID to change to (for upgrades/downgrades)'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const { subscription_id, ...updateData } = args;
+          const response = await yelpService.businessSubscriptions.updateSubscription(subscription_id, updateData);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatActiveSubscriptionResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error updating subscription: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpCancelSubscription: {
+      description: "Cancel a subscription",
+      schema: z.object({
+        subscription_id: z.string().describe('Subscription ID to cancel'),
+        cancel_immediately: z.boolean().optional().describe('Whether to cancel immediately or at the end of the current period'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.businessSubscriptions.cancelSubscription(
+            args.subscription_id, 
+            args.cancel_immediately
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatActiveSubscriptionResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error canceling subscription: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetSubscriptionUsage: {
+      description: "Get subscription usage data",
+      schema: z.object({
+        subscription_id: z.string().describe('Subscription ID to get usage data for'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.businessSubscriptions.getSubscriptionUsage(args.subscription_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatSubscriptionUsageResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting subscription usage: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetSubscriptionHistory: {
+      description: "Get subscription history",
+      schema: z.object({
+        subscription_id: z.string().describe('Subscription ID to get history for'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.businessSubscriptions.getSubscriptionHistory(args.subscription_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatSubscriptionHistoryResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting subscription history: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
     // Respond Reviews Tools
     yelpRespondReviewsGetToken: {
       description: "Get an OAuth access token for responding to reviews",
@@ -294,6 +532,178 @@ function formatRespondToReviewResponse(response: RespondToReviewResponse): strin
   }
   
   return formattedResponse;
+}
+
+/**
+ * Format subscription plans response
+ */
+function formatSubscriptionPlansResponse(response: SubscriptionPlansResponse): string {
+  let formattedResponse = '## Available Subscription Plans\n\n';
+  
+  if (response.total !== undefined) {
+    formattedResponse += `Total Plans: ${response.total}\n\n`;
+  }
+  
+  if (response.plans.length === 0) {
+    formattedResponse += 'No subscription plans available.\n';
+    return formattedResponse;
+  }
+  
+  response.plans.forEach((plan, index) => {
+    formattedResponse += `### ${index + 1}. ${plan.name}\n`;
+    formattedResponse += `ID: ${plan.plan_id}\n`;
+    
+    if (plan.description) {
+      formattedResponse += `Description: ${plan.description}\n`;
+    }
+    
+    formattedResponse += `Price: $${(plan.price_cents / 100).toFixed(2)} ${plan.billing_frequency}\n`;
+    formattedResponse += `Status: ${plan.status}\n`;
+    
+    if (plan.features && plan.features.length > 0) {
+      formattedResponse += `Features:\n`;
+      plan.features.forEach(feature => {
+        formattedResponse += `- ${feature}\n`;
+      });
+    }
+    
+    formattedResponse += '\n';
+  });
+  
+  return formattedResponse;
+}
+
+/**
+ * Format active subscription response
+ */
+function formatActiveSubscriptionResponse(response: ActiveSubscription): string {
+  let formattedResponse = '## Active Subscription\n\n';
+  
+  formattedResponse += `Subscription ID: ${response.subscription_id}\n`;
+  formattedResponse += `Business ID: ${response.business_id}\n`;
+  formattedResponse += `Plan: ${response.plan_name} (${response.plan_id})\n`;
+  formattedResponse += `Status: ${response.status}\n`;
+  formattedResponse += `Price: $${(response.price_cents / 100).toFixed(2)} ${response.billing_frequency}\n`;
+  formattedResponse += `Auto-Renew: ${response.auto_renew ? 'Yes' : 'No'}\n`;
+  
+  const startDate = new Date(response.start_date).toLocaleDateString();
+  formattedResponse += `Start Date: ${startDate}\n`;
+  
+  if (response.end_date) {
+    const endDate = new Date(response.end_date).toLocaleDateString();
+    formattedResponse += `End Date: ${endDate}\n`;
+  }
+  
+  if (response.renewal_date) {
+    const renewalDate = new Date(response.renewal_date).toLocaleDateString();
+    formattedResponse += `Next Renewal: ${renewalDate}\n`;
+  }
+  
+  if (response.features && response.features.length > 0) {
+    formattedResponse += `\nFeatures:\n`;
+    response.features.forEach(feature => {
+      formattedResponse += `- ${feature}\n`;
+    });
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format subscription usage response
+ */
+function formatSubscriptionUsageResponse(response: SubscriptionUsage): string {
+  let formattedResponse = '## Subscription Usage\n\n';
+  
+  formattedResponse += `Subscription ID: ${response.subscription_id}\n`;
+  formattedResponse += `Business ID: ${response.business_id}\n`;
+  formattedResponse += `Plan ID: ${response.plan_id}\n`;
+  
+  const periodStart = new Date(response.period_start).toLocaleDateString();
+  const periodEnd = new Date(response.period_end).toLocaleDateString();
+  formattedResponse += `Current Billing Period: ${periodStart} to ${periodEnd}\n\n`;
+  
+  if (response.feature_usage.length === 0) {
+    formattedResponse += 'No usage data available.\n';
+    return formattedResponse;
+  }
+  
+  formattedResponse += `### Feature Usage\n\n`;
+  
+  formattedResponse += `| Feature | Used | Total | Percentage | Unit |\n`;
+  formattedResponse += `| ------- | ---- | ----- | ---------- | ---- |\n`;
+  
+  response.feature_usage.forEach(feature => {
+    const percentUsed = ((feature.used / feature.total) * 100).toFixed(1);
+    const unit = feature.unit || '';
+    formattedResponse += `| ${feature.feature} | ${feature.used} | ${feature.total} | ${percentUsed}% | ${unit} |\n`;
+  });
+  
+  return formattedResponse;
+}
+
+/**
+ * Format subscription history response
+ */
+function formatSubscriptionHistoryResponse(response: SubscriptionHistory): string {
+  let formattedResponse = '## Subscription History\n\n';
+  
+  formattedResponse += `Subscription ID: ${response.subscription_id}\n`;
+  formattedResponse += `Business ID: ${response.business_id}\n\n`;
+  
+  if (response.history.length === 0) {
+    formattedResponse += 'No history available.\n';
+    return formattedResponse;
+  }
+  
+  formattedResponse += `### Event History\n\n`;
+  
+  response.history.forEach((event, index) => {
+    const date = new Date(event.date).toLocaleString();
+    formattedResponse += `**${date}**: ${formatEventType(event.event_type)}`;
+    
+    if (event.plan_id || event.plan_name) {
+      formattedResponse += ` - ${event.plan_name || event.plan_id}`;
+    }
+    
+    formattedResponse += '\n';
+    
+    if (event.details) {
+      if (event.event_type === 'changed' && event.details.old_plan_id && event.details.new_plan_id) {
+        formattedResponse += `  Changed from ${event.details.old_plan_id} to ${event.details.new_plan_id}\n`;
+      } else {
+        formattedResponse += `  Details: ${JSON.stringify(event.details)}\n`;
+      }
+    }
+    
+    if (index < response.history.length - 1) {
+      formattedResponse += '\n';
+    }
+  });
+  
+  return formattedResponse;
+}
+
+/**
+ * Format event type for better readability
+ */
+function formatEventType(eventType: string): string {
+  switch (eventType) {
+    case 'created':
+      return 'Subscription Created';
+    case 'renewed':
+      return 'Subscription Renewed';
+    case 'canceled':
+      return 'Subscription Canceled';
+    case 'changed':
+      return 'Plan Changed';
+    case 'payment_failed':
+      return 'Payment Failed';
+    case 'expired':
+      return 'Subscription Expired';
+    default:
+      return eventType.charAt(0).toUpperCase() + eventType.slice(1);
+  }
 }
 
 // Start the server using stdio transport
