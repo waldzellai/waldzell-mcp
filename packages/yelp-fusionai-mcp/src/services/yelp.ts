@@ -12,6 +12,7 @@ import businessSubscriptionsClient from './api/business-subscriptions';
 import checkoutClient from './api/checkout';
 import claimBusinessClient from './api/claim-business';
 import userManagementClient from './api/user-management';
+import dataIngestionClient from './api/data-ingestion';
 
 /**
  * Yelp AI Response interface
@@ -111,6 +112,11 @@ class YelpService {
    * User Management API client
    */
   readonly userManagement = userManagementClient;
+  
+  /**
+   * Data Ingestion API client
+   */
+  readonly dataIngestion = dataIngestionClient;
 }
 
 export default new YelpService();

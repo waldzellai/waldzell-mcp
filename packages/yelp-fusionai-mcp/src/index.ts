@@ -46,6 +46,15 @@ import {
   CollectionsResponse,
   CollectionItemsResponse
 } from './services/api/user-management';
+import {
+  DataSource,
+  DataSourceListResponse,
+  DataIngestionJob,
+  DataIngestionJobListResponse,
+  CreateDataSourceParams,
+  CreateDataIngestionJobParams,
+  UpdateDataIngestionJobParams
+} from './services/api/data-ingestion';
 
 // Define our implementation
 const server = new McpServer({
@@ -124,6 +133,19 @@ const server = new McpServer({
   - yelpGetCollectionItems: Get items in a collection
   - yelpAddBusinessToCollection: Add a business to a collection
   - yelpRemoveBusinessFromCollection: Remove a business from a collection
+  
+  Data Ingestion Tools:
+  - yelpListDataSources: List all data sources
+  - yelpGetDataSource: Get details about a specific data source
+  - yelpCreateDataSource: Create a new data source
+  - yelpUpdateDataSource: Update an existing data source
+  - yelpDeleteDataSource: Delete a data source
+  - yelpListDataIngestionJobs: List all data ingestion jobs
+  - yelpGetDataIngestionJob: Get details about a specific data ingestion job
+  - yelpCreateDataIngestionJob: Create a new data ingestion job
+  - yelpUpdateDataIngestionJob: Update an existing data ingestion job
+  - yelpCancelDataIngestionJob: Cancel a data ingestion job
+  - yelpRetryDataIngestionJob: Retry a failed data ingestion job
   
   OAuth Tools:
   - yelpGetOAuthToken: Get an OAuth access token (v2 or v3)
@@ -1594,6 +1616,366 @@ const server = new McpServer({
       }
     },
     
+    // Data Ingestion Tools
+    yelpListDataSources: {
+      description: "List all data sources",
+      schema: z.object({
+        type: z.string().optional().describe('Filter by data source type'),
+        status: z.enum(['active', 'inactive', 'pending', 'error']).optional().describe('Filter by status'),
+        offset: z.number().optional().describe('Pagination offset'),
+        limit: z.number().optional().describe('Pagination limit'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.dataIngestion.listDataSources(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatDataSourceListResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error listing data sources: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetDataSource: {
+      description: "Get details about a specific data source",
+      schema: z.object({
+        source_id: z.string().describe('Data source ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.dataIngestion.getDataSource(args.source_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatDataSource(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting data source details: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpCreateDataSource: {
+      description: "Create a new data source",
+      schema: z.object({
+        name: z.string().describe('Name of the data source'),
+        type: z.string().describe('Type of the data source (e.g., "csv", "database", "api")'),
+        connection_details: z.record(z.any()).describe('Connection details for the data source'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.dataIngestion.createDataSource(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatDataSource(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error creating data source: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpUpdateDataSource: {
+      description: "Update an existing data source",
+      schema: z.object({
+        source_id: z.string().describe('Data source ID to update'),
+        name: z.string().optional().describe('New name for the data source'),
+        connection_details: z.record(z.any()).optional().describe('New connection details for the data source'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const { source_id, ...updateData } = args;
+          const response = await yelpService.dataIngestion.updateDataSource(source_id, updateData);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatDataSource(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error updating data source: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpDeleteDataSource: {
+      description: "Delete a data source",
+      schema: z.object({
+        source_id: z.string().describe('Data source ID to delete'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.dataIngestion.deleteDataSource(args.source_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Data source deletion status: ${response.success ? '✅ Successfully deleted' : '❌ Failed to delete'}`
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error deleting data source: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpListDataIngestionJobs: {
+      description: "List all data ingestion jobs",
+      schema: z.object({
+        job_type: z.string().optional().describe('Filter by job type'),
+        status: z.enum(['pending', 'in_progress', 'completed', 'failed']).optional().describe('Filter by status'),
+        source_id: z.string().optional().describe('Filter by source ID'),
+        offset: z.number().optional().describe('Pagination offset'),
+        limit: z.number().optional().describe('Pagination limit'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.dataIngestion.listDataIngestionJobs(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatDataIngestionJobListResponse(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error listing data ingestion jobs: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpGetDataIngestionJob: {
+      description: "Get details about a specific data ingestion job",
+      schema: z.object({
+        job_id: z.string().describe('Data ingestion job ID'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.dataIngestion.getDataIngestionJob(args.job_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatDataIngestionJob(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error getting data ingestion job details: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpCreateDataIngestionJob: {
+      description: "Create a new data ingestion job",
+      schema: z.object({
+        source_id: z.string().describe('ID of the data source'),
+        job_type: z.string().describe('Type of the job (e.g., "sync", "incremental", "full")'),
+        schedule: z.object({
+          frequency: z.string().describe('Frequency of the job (e.g., "once", "hourly", "daily", "weekly", "monthly")'),
+          time: z.string().optional().describe('Time of day to run the job (if applicable)'),
+          day_of_week: z.number().optional().describe('Day of week to run the job (if applicable)'),
+          day_of_month: z.number().optional().describe('Day of month to run the job (if applicable)'),
+        }).optional().describe('Optional schedule for the job'),
+        configuration: z.record(z.any()).optional().describe('Optional configuration for the job'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.dataIngestion.createDataIngestionJob(args);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatDataIngestionJob(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error creating data ingestion job: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpUpdateDataIngestionJob: {
+      description: "Update an existing data ingestion job",
+      schema: z.object({
+        job_id: z.string().describe('Data ingestion job ID to update'),
+        job_type: z.string().optional().describe('New job type'),
+        schedule: z.object({
+          frequency: z.string().describe('Frequency of the job'),
+          time: z.string().optional().describe('Time of day to run the job'),
+          day_of_week: z.number().optional().describe('Day of week to run the job'),
+          day_of_month: z.number().optional().describe('Day of month to run the job'),
+        }).optional().describe('New schedule'),
+        configuration: z.record(z.any()).optional().describe('New configuration'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const { job_id, ...updateData } = args;
+          const response = await yelpService.dataIngestion.updateDataIngestionJob(job_id, updateData);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatDataIngestionJob(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error updating data ingestion job: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpCancelDataIngestionJob: {
+      description: "Cancel a data ingestion job",
+      schema: z.object({
+        job_id: z.string().describe('Data ingestion job ID to cancel'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.dataIngestion.cancelDataIngestionJob(args.job_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Job cancellation status: ${response.success ? '✅ Successfully cancelled' : '❌ Failed to cancel'}`
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error cancelling data ingestion job: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
+    yelpRetryDataIngestionJob: {
+      description: "Retry a failed data ingestion job",
+      schema: z.object({
+        job_id: z.string().describe('Data ingestion job ID to retry'),
+      }),
+      async (args): Promise<CallToolResult> => {
+        try {
+          const response = await yelpService.dataIngestion.retryDataIngestionJob(args.job_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: formatDataIngestionJob(response)
+              }
+            ]
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error retrying data ingestion job: ${(error as Error).message}`
+              }
+            ]
+          };
+        }
+      }
+    },
+    
     // Respond Reviews Tools
     yelpRespondReviewsGetToken: {
       description: "Get an OAuth access token for responding to reviews",
@@ -2489,7 +2871,6 @@ function formatEventSearchResponse(response: EventSearchResponse): string {
     
     if (event.is_free !== undefined) {
       formattedResponse += `**Cost**: ${event.is_free ? 'Free' : (event.cost ? '$' + event.cost : 'Paid')}\n`;
-    }' + event.cost : 'Paid'}\n`;
     }
     
     if (event.category) {
@@ -3036,6 +3417,162 @@ function formatCollectionItemsResponse(response: CollectionItemsResponse): strin
   
   if (response.pagination && response.pagination.next_offset) {
     formattedResponse += `*There are more items available. Use offset=${response.pagination.next_offset} to see more.*\n`;
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format data source response
+ */
+function formatDataSource(dataSource: DataSource): string {
+  const statusEmoji = {
+    'active': '✅',
+    'inactive': '⚪',
+    'pending': '⏳',
+    'error': '❌'
+  };
+
+  let formattedResponse = `## Data Source: ${dataSource.name}\n\n`;
+  formattedResponse += `Source ID: ${dataSource.id}\n`;
+  formattedResponse += `Type: ${dataSource.type}\n`;
+  formattedResponse += `Status: ${statusEmoji[dataSource.status] || ''} ${dataSource.status}\n`;
+  formattedResponse += `Last Updated: ${dataSource.last_updated}\n`;
+  formattedResponse += `Created: ${dataSource.created_at}\n\n`;
+
+  if (dataSource.connection_details && Object.keys(dataSource.connection_details).length > 0) {
+    formattedResponse += '### Connection Details\n\n';
+    
+    for (const [key, value] of Object.entries(dataSource.connection_details)) {
+      const formattedValue = typeof value === 'object' 
+        ? JSON.stringify(value) 
+        : String(value);
+      formattedResponse += `${key}: ${formattedValue}\n`;
+    }
+  }
+
+  return formattedResponse;
+}
+
+/**
+ * Format data source list response
+ */
+function formatDataSourceListResponse(response: DataSourceListResponse): string {
+  let formattedResponse = '## Data Sources\n\n';
+  
+  if (response.data_sources.length === 0) {
+    formattedResponse += 'No data sources found.\n';
+    return formattedResponse;
+  }
+  
+  const statusEmoji = {
+    'active': '✅',
+    'inactive': '⚪',
+    'pending': '⏳',
+    'error': '❌'
+  };
+
+  response.data_sources.forEach((source, index) => {
+    formattedResponse += `### ${index + 1}. ${source.name}\n`;
+    formattedResponse += `Source ID: ${source.id}\n`;
+    formattedResponse += `Type: ${source.type}\n`;
+    formattedResponse += `Status: ${statusEmoji[source.status] || ''} ${source.status}\n`;
+    formattedResponse += `Last Updated: ${source.last_updated}\n`;
+    formattedResponse += `Created: ${source.created_at}\n\n`;
+  });
+  
+  if (response.pagination) {
+    formattedResponse += `Found ${response.pagination.total} total data sources.\n`;
+    
+    if (response.pagination.offset > 0 || response.pagination.limit < response.pagination.total) {
+      formattedResponse += `Showing items ${response.pagination.offset + 1} to ${Math.min(response.pagination.offset + response.pagination.limit, response.pagination.total)}.\n`;
+    }
+  }
+  
+  return formattedResponse;
+}
+
+/**
+ * Format data ingestion job response
+ */
+function formatDataIngestionJob(job: DataIngestionJob): string {
+  const statusEmoji = {
+    'pending': '⏳',
+    'in_progress': '🔄',
+    'completed': '✅',
+    'failed': '❌'
+  };
+
+  let formattedResponse = `## Data Ingestion Job: ${job.job_id}\n\n`;
+  formattedResponse += `Status: ${statusEmoji[job.status] || ''} ${job.status}\n`;
+  formattedResponse += `Type: ${job.job_type}\n`;
+  formattedResponse += `Source: ${job.source.type} (ID: ${job.source.id})\n`;
+  formattedResponse += `Created: ${job.created_at}\n`;
+  formattedResponse += `Updated: ${job.updated_at}\n\n`;
+
+  if (job.stats) {
+    formattedResponse += '### Statistics\n\n';
+    formattedResponse += `Records Processed: ${job.stats.records_processed}\n`;
+    formattedResponse += `Records Ingested: ${job.stats.records_ingested}\n`;
+    formattedResponse += `Records Failed: ${job.stats.records_failed}\n\n`;
+  }
+
+  if (job.error) {
+    formattedResponse += '### Error\n\n';
+    formattedResponse += `Code: ${job.error.code}\n`;
+    formattedResponse += `Message: ${job.error.message}\n`;
+    
+    if (job.error.details) {
+      formattedResponse += `Details: ${job.error.details}\n`;
+    }
+  }
+
+  return formattedResponse;
+}
+
+/**
+ * Format data ingestion job list response
+ */
+function formatDataIngestionJobListResponse(response: DataIngestionJobListResponse): string {
+  let formattedResponse = '## Data Ingestion Jobs\n\n';
+  
+  if (response.jobs.length === 0) {
+    formattedResponse += 'No data ingestion jobs found.\n';
+    return formattedResponse;
+  }
+  
+  const statusEmoji = {
+    'pending': '⏳',
+    'in_progress': '🔄',
+    'completed': '✅',
+    'failed': '❌'
+  };
+
+  response.jobs.forEach((job, index) => {
+    formattedResponse += `### ${index + 1}. Job ${job.job_id}\n`;
+    formattedResponse += `Status: ${statusEmoji[job.status] || ''} ${job.status}\n`;
+    formattedResponse += `Type: ${job.job_type}\n`;
+    formattedResponse += `Source: ${job.source.type} (ID: ${job.source.id})\n`;
+    formattedResponse += `Created: ${job.created_at}\n`;
+    formattedResponse += `Updated: ${job.updated_at}\n`;
+    
+    if (job.stats) {
+      formattedResponse += `Statistics: ${job.stats.records_processed} processed, ${job.stats.records_ingested} ingested, ${job.stats.records_failed} failed\n`;
+    }
+    
+    if (job.error) {
+      formattedResponse += `Error: ${job.error.code} - ${job.error.message}\n`;
+    }
+    
+    formattedResponse += '\n';
+  });
+  
+  if (response.pagination) {
+    formattedResponse += `Found ${response.pagination.total} total jobs.\n`;
+    
+    if (response.pagination.offset > 0 || response.pagination.limit < response.pagination.total) {
+      formattedResponse += `Showing items ${response.pagination.offset + 1} to ${Math.min(response.pagination.offset + response.pagination.limit, response.pagination.total)}.\n`;
+    }
   }
   
   return formattedResponse;

@@ -116,6 +116,19 @@
 - yelpAddBusinessToCollection - Add a business to a collection
 - yelpRemoveBusinessFromCollection - Remove a business from a collection
 
+### Data Ingestion Tools
+- yelpListDataSources - List all data sources
+- yelpGetDataSource - Get details about a specific data source
+- yelpCreateDataSource - Create a new data source
+- yelpUpdateDataSource - Update an existing data source
+- yelpDeleteDataSource - Delete a data source
+- yelpListDataIngestionJobs - List all data ingestion jobs
+- yelpGetDataIngestionJob - Get details about a specific data ingestion job
+- yelpCreateDataIngestionJob - Create a new data ingestion job
+- yelpUpdateDataIngestionJob - Update an existing data ingestion job
+- yelpCancelDataIngestionJob - Cancel a data ingestion job
+- yelpRetryDataIngestionJob - Retry a failed data ingestion job
+
 ### Respond Reviews Tools
 - yelpRespondReviewsGetToken - Get an OAuth access token for responding to reviews
 - yelpRespondReviewsBusinesses - Get businesses that the user can respond to reviews for
