@@ -1,0 +1,44 @@
+# Source
+src/
+typescript-sdk/
+
+# Tests
+**/__tests__
+**/*.test.ts
+**/*.spec.ts
+jest.config.js
+coverage/
+
+# Config files
+.eslintrc*
+tsconfig.json
+
+# Environment
+.env
+.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependencies
+node_modules/
+.npm
+.node_repl_history
