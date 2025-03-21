@@ -7,7 +7,7 @@ This is a Turborepo-powered monorepo containing MCP (Model Context Protocol) ser
 
 ### Packages
 
-- **[yelp-fusionai-mcp](./packages/yelp-fusionai-mcp)** - MCP server for Yelp Fusion API
+- **[server-yelp-fusionai](./packages/server-yelp-fusionai)** - MCP server for Yelp Fusion API
 - **[server-stochasticthinking](./packages/server-stochasticthinking)** - Stochastic thinking MCP server
 - **[server-clear-thought](./packages/server-clear-thought)** - Clear thought MCP server
 - **[common](./packages/common)** - Shared utilities and types
@@ -77,7 +77,7 @@ This repo is set up to easily deploy packages to Smithery:
 npm run deploy
 
 # Deploy specific packages
-npm run smithery:yelp
+npm run smithery:yelp-fusion
 npm run smithery:stochastic
 npm run smithery:clear-thought
 ```
@@ -300,12 +300,6 @@ Contributions are welcome! Please feel free to submit a pull request.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-MIT
 
 ## Author
 

@@ -13,7 +13,7 @@
     "test": "turbo run test",
     "docker": "npm run docker --workspace @waldzellai/clear-thought",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "smithery:yelp": "cd packages/yelp-fusionai-mcp && smithery deploy",
+    "smithery:yelp-fusion": "cd packages/server-yelp-fusionai && smithery deploy",
     "smithery:stochastic": "cd packages/server-stochasticthinking && smithery deploy",
     "smithery:clear-thought": "cd packages/server-clear-thought && smithery deploy",
     "deploy": "turbo run deploy",
