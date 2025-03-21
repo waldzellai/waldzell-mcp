@@ -22,9 +22,7 @@
     "mcp",
     "model-context-protocol"
   ],
-  "bin": {
-    "server-yelp-fusionai": "./dist/index.js"
-  },
+  "bin": "./dist/index.js",
   "author": "glassBead for Waldzell AI",
   "license": "MIT",
   "repository": {
