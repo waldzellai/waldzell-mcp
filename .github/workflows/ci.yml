@@ -21,10 +21,23 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'yarn'
     
     - name: Enable Corepack
       run: corepack enable
+    
+    - name: Set Yarn Version
+      run: corepack prepare yarn@4.6.0 --activate
+    
+    - name: Cache Yarn Dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          .yarn/cache
+          node_modules
+          */*/node_modules
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-yarn-
       
     - name: Install dependencies
       run: yarn install --immutable
