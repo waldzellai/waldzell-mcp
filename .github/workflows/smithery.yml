@@ -17,6 +17,7 @@ on:
           - yelp-fusionai-mcp
           - server-stochasticthinking
           - server-clear-thought
+          - server-yelp-fusionai
 
 jobs:
   deploy-to-smithery:
@@ -29,9 +30,16 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '18'
+        cache: 'yarn'
+    
+    - name: Enable Corepack
+      run: corepack enable
+    
+    - name: Install dependencies
+      run: yarn install --immutable
     
     - name: Install Smithery CLI
-      run: npm install -g @smithery/cli
+      run: yarn global add @smithery/cli
     
     - name: Login to Smithery
       run: smithery login
