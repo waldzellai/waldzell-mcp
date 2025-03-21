@@ -9,7 +9,7 @@ This is a Turborepo-powered monorepo containing MCP (Model Context Protocol) ser
 
 - **[server-yelp-fusionai](./packages/server-yelp-fusionai)** - MCP server for Yelp Fusion API
 - **[server-stochasticthinking](./packages/server-stochasticthinking)** - Stochastic thinking MCP server
-- **[server-clear-thought](./packages/server-clear-thought)** - Clear thought MCP server
+- **[server-clear-thought](./packages/server-clear-thought)** - Sequentialthinking fork inspired by James Clear
 - **[common](./packages/common)** - Shared utilities and types
 
 ### Utilities
