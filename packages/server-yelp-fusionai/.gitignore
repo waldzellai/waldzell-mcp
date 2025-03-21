@@ -39,6 +39,15 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+.DS_Store
+.git_backup/
 
-.DS_Store.git_backup/
+# Scripts and utility files
+fix-types.js
+fix-types.ts
+fix-error-types.js
+create-template.sh
 
+# Documentation and supporting files
+**/*/Fusion AI (Search & Chat)/*.html
+**/*/*.html
