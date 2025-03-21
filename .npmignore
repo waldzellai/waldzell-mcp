@@ -1,35 +1,50 @@
-# Development directories
-memory-bank/
-node_modules/
-dist/
-
-# Source files (since we publish compiled JS)
-*.ts
-!*.d.ts
-
-# Config files
+# Source files
+src/
 tsconfig.json
-.gitignore
-.npmignore
+jest.config.js
 
-# Docker
-Dockerfile
-.dockerignore
+# Tests
+**/__tests__/
+**/*.test.ts
+**/__mocks__/
+coverage/
 
-# Editor
+# Development tools
+.eslintrc.js
+.eslintrc.json
+.prettierrc
+.prettierrc.json
 .vscode/
-.idea/
+.github/
+.gitignore
 
-# Logs
+# Documentation and examples
+docs/
+examples/
+
+# Temporary files
+temp/
+tmp/
 *.log
 npm-debug.log*
 
-# Test files
-__tests__/
-*.test.ts
-*.spec.ts
-
-# Misc
-.DS_Store
-*.tgz
+# Environment variables
 .env
+.env.*
+
+# Editor and OS files
+.DS_Store
+.idea/
+*.swp
+*.swo
+
+# Other files not needed in the package
+CONTRIBUTING.md
+CHANGELOG.md
+create-template.sh
+llms.txt
+typescript-sdk/
+packages/
+
+# Keep dist folder (override .gitignore)
+!dist/

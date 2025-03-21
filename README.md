@@ -1,188 +1,313 @@
-# @waldzellai/mcp-servers
 
-[![smithery badge](https://smithery.ai/badge/@waldzellai/mcp-servers)](https://smithery.ai/server/@waldzellai/mcp-servers)
+# Waldzell MCP Servers
 
-A collection of Model Context Protocol (MCP) servers providing various capabilities for AI assistants.
+This is a Turborepo-powered monorepo containing MCP (Model Context Protocol) servers for various AI assistant integrations.
 
-## Packages
+## What's inside?
 
-### [@waldzellai/clear-thought](packages/server-clear-thought)
-An MCP server providing advanced problem-solving capabilities through:
-- Sequential thinking with dynamic thought evolution
-- Mental models for structured problem decomposition [from a list provided by James Clear's website](https://jamesclear.com/mental-models)
-- Systematic debugging approaches
+### Packages
 
-### [@waldzellai/stochasticthinking](packages/server-stochasticthinking)
-An MCP server extending sequential thinking with advanced stochastic algorithms for better decision-making:
-- Markov Decision Processes (MDPs) for optimizing long-term decision sequences
-- Monte Carlo Tree Search (MCTS) for exploring large decision spaces
-- Multi-Armed Bandit Models for balancing exploration vs exploitation
-- Bayesian Optimization for decisions under uncertainty
-- Hidden Markov Models (HMMs) for inferring latent states
+- **[yelp-fusionai-mcp](./packages/yelp-fusionai-mcp)** - MCP server for Yelp Fusion API
+- **[server-stochasticthinking](./packages/server-stochasticthinking)** - Stochastic thinking MCP server
+- **[server-clear-thought](./packages/server-clear-thought)** - Clear thought MCP server
+- **[common](./packages/common)** - Shared utilities and types
 
-Helps AI assistants break out of local minima by considering multiple possible futures and strategically exploring alternative approaches.
+### Utilities
 
-## Development
+This monorepo uses [Turborepo](https://turbo.build/repo) with [NPM Workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces).
 
-This is a monorepo using npm workspaces. To get started:
+- [Turborepo](https://turbo.build/repo) — High-performance build system for monorepos
+- [Changesets](https://github.com/changesets/changesets) — Managing versioning and changelogs
+- [GitHub Actions](https://github.com/features/actions) — Automated workflows
+- [Smithery](https://smithery.ai) — Deployment platform for MCP servers
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18 or higher
+- npm 8 or higher
+
+### Installation
+
+Clone the repository and install dependencies:
 
 ```bash
-# Install dependencies for all packages
+git clone https://github.com/waldzellai/mcp-servers.git
+cd mcp-servers
 npm install
+```
 
-# Build all packages
+### Development
+
+To develop all packages:
+
+```bash
+npm run dev
+```
+
+### Building
+
+To build all packages:
+
+```bash
 npm run build
+```
 
-# Clean all packages
-npm run clean
+The build output will be in each package's `dist/` directory.
 
-# Test all packages
+### Testing
+
+```bash
 npm run test
 ```
 
-## Package Management
+### Linting
 
-Each package in the `packages/` directory is published independently to npm under the `@waldzellai` organization scope.
+```bash
+npm run lint
+```
 
-To create a new package:
-1. Create a new directory under `packages/`
-2. Initialize with required files (package.json, src/, etc.)
-3. Add to workspaces in root package.json if needed
+### Deploying to Smithery
+
+This repo is set up to easily deploy packages to Smithery:
+
+```bash
+# Deploy all packages
+npm run deploy
+
+# Deploy specific packages
+npm run smithery:yelp
+npm run smithery:stochastic
+npm run smithery:clear-thought
+```
+
+## Workflow
+
+### Adding a new feature
+
+1. Create a new branch
+2. Make your changes
+3. Add a changeset (documents what's changed for version bumping):
+   ```bash
+   npx changeset
+   ```
+4. Push your changes
+
+### Releasing new versions
+
+We use Changesets to manage versions. Create a PR with your changes and Changesets will create a release PR that you can merge to release new versions.
+
+For manual releases:
+
+```bash
+npm run publish-packages
+```
+
+### Adding a New Package
+
+1. Create a new directory in the `packages` directory
+2. Initialize the package with `npm init`
+3. Add your source code
+4. Update `turbo.json` pipeline if needed
+5. Add a `smithery.yaml` file if you want to deploy to Smithery
+
+## Turborepo
+
+### Remote Caching
+
+Turborepo can use a remote cache to share build artifacts across machines. To enable Remote Caching:
+
+```bash
+npx turbo login
+npx turbo link
+
+# Yelp Fusion MCP Server
+
+[![npm version](https://img.shields.io/npm/v/server-yelp-fusionai.svg)](https://www.npmjs.com/package/server-yelp-fusionai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+This package provides an MCP (Model Context Protocol) server that enables natural language communication between Claude and the Yelp Fusion API. Use natural language to search for businesses, read reviews, find events, and more—directly through Claude Desktop.
+
+## 🌟 Communicate with Yelp through Claude
+
+Simply ask Claude questions like:
+- "Find me the best pizza places in Chicago"
+- "What are some highly rated coffee shops in San Francisco that are open now?"
+- "Tell me about the reviews for Gary Danko restaurant"
+- "Are there any free events in New York this weekend?"
+
+
+## Features
+
+- **Natural Language Interface** - Ask Claude about businesses and get intelligent responses
+- **AI-Powered Search** - Leverages Yelp's AI API for sophisticated natural language business search
+- **Comprehensive API Coverage**:
+  - Businesses search and details
+  - Reviews and review highlights
+  - Events discovery
+  - Categories exploration
+  - And 15+ other API categories (OAuth, Advertising, etc.)
+- **Rich Information** - Get ratings, pricing, hours, reviews, and more
+- **Formatted Responses** - Results are presented in clean, readable Markdown
+
+## Installation
+
+```bash
+npm install server-yelp-fusionai
+```
+
+## Setting Up with Claude Desktop
+
+1. **Install the Package**:
+   ```bash
+   npm install server-yelp-fusionai
+   ```
+
+2. **Create a Basic Server File** (e.g., `yelp-server.js`):
+   ```javascript
+   require('dotenv').config();
+   const { startServer } = require('server-yelp-fusionai');
+   
+   // Start the server on port 3000 (or any port you prefer)
+   startServer(3000).then(() => {
+     console.log('Yelp Fusion MCP server is running on port 3000');
+   });
+   ```
+
+3. **Create a `.env` File** with your Yelp API credentials:
+   ```
+   YELP_API_KEY=your_api_key_here
+   YELP_CLIENT_ID=your_client_id_here
+   ```
+
+4. **Run the Server**:
+   ```bash
+   node yelp-server.js
+   ```
+
+5. **Connect with Claude Desktop**:
+   - Open Claude Desktop
+   - Go to Settings → Model Context Protocol
+   - Add a new connection to `http://localhost:3000/mcp`
+   - Enable the connection
+
+6. **Start Asking Questions**:
+   - "What are the best Italian restaurants in Boston?"
+   - "Tell me about highly-rated coffee shops near downtown Seattle"
+   - "Are there any events happening in Austin this weekend?"
+
+## Examples of Questions You Can Ask Claude
+
+### Business Discovery
+- "What are some well-reviewed sushi restaurants in Los Angeles?"
+- "Find me pet-friendly cafes in Portland with outdoor seating"
+- "What's the highest-rated breakfast place in Chicago's Loop area?"
+- "Are there any 24-hour diners in Manhattan?"
+
+### Detailed Business Information
+- "Tell me about The French Laundry restaurant in Napa Valley"
+- "What are the operating hours for Pike Place Market in Seattle?"
+- "Does Flour Bakery in Boston have gluten-free options?"
+- "Show me the menu highlights from Momofuku in New York"
+
+### Reviews and Insights
+- "What do people say about the service at The Cheesecake Factory in San Francisco?"
+- "Show me positive reviews about the food at Eleven Madison Park"
+- "What are the common complaints about Hotel Zetta?"
+- "What dishes are recommended at Tartine Bakery?"
+
+### Events
+- "Are there any food festivals in San Diego this month?"
+- "Find family-friendly events in Chicago this weekend"
+- "What's the featured event in New Orleans right now?"
+- "Tell me about upcoming concerts in Nashville"
+
+## Advanced Usage
+
+### Custom Server Configuration
+
+```javascript
+const { createServer } = require('server-yelp-fusionai');
+
+// Create a server without starting it
+const server = createServer();
+
+// Add your own custom middleware or configuration
+// ...
+
+// Start the server when ready
+server.listen(3000, () => {
+  console.log('Custom Yelp Fusion MCP server running on port 3000');
+});
+```
+
+### API Reference
+
+The MCP server exposes several tools for interacting with the Yelp Fusion API:
+
+#### Primary Search Tools
+
+1. **yelpQuery**  
+   Natural language search using Yelp's AI API
+   ```json
+   {
+     "query": "Find pizza places in Chicago"
+   }
+   ```
+
+2. **yelpBusinessSearch**  
+   Parameter-based business search
+   ```json
+   {
+     "term": "coffee",
+     "location": "San Francisco, CA",
+     "price": "1,2",
+     "open_now": true
+   }
+   ```
+
+3. **yelpBusinessDetails**  
+   Get detailed information about a specific business
+   ```json
+   {
+     "id": "WavvLdfdP6g8aZTtbBQHTw"
+   }
+   ```
+
+See the [full API documentation](https://github.com/waldzellai/waldzell-mcp/tree/main/packages/server-yelp-fusionai#api) for details on all available tools and their parameters.
+
+## Development
+
+### Testing
+
+```bash
+npm test
+```
+
+### Building
+
+```bash
+npm run build
+
+```
+
+## Contributing
+
+
+Contributions are welcome! Please feel free to submit a pull request.
 
 ## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
 MIT
 
-## Understanding MCP Model Enhancement
+## Author
 
-### Less Technical Answer 
+glassBead for Waldzell AI
 
-Here's a reframed explanation using USB/hardware analogies:
-
-#### Model Enhancement as USB Add-Ons  
-Think of the core AI model as a basic desktop computer. Model enhancement through MCP is like adding specialized USB devices to expand its capabilities. The Sequential Thinking server acts like a plug-in math coprocessor chip (like old 8087 FPU chips) that boosts the computer's number-crunching abilities.
-
-**How USB-Style Enhancement Works:**
-
-##### Basic Setup
-- **Desktop (Base AI Model)**: Handles general tasks  
-- **USB Port (MCP Interface)**: Standard connection point  
-- **USB Stick (MCP Server)**: Contains special tools (like a "math helper" program)
-
-##### Plug-and-Play Mechanics  
-1. **Driver Installation (Server Registration)**  
-   ```python
-   # Simplified version of USB "driver setup"
-   def install_mcp_server(usb_port, server_files):
-       usb_port.register_tools(server_files['tools'])
-       usb_port.load_drivers(server_files['drivers'])
-   ```
-   - Server provides "driver" APIs the desktop understands  
-   - Tools get added to the system tray (available services)
-
-2. **Tool Execution (Using the USB)**  
-   - Desktop sends request like a keyboard input:  
-   `Press F1 to use math helper`  
-   - USB processes request using its dedicated hardware:  
-   ```python
-   def math_helper(input):
-       # Dedicated circuit on USB processes this
-       return calculation_results
-   ```
-   - Results return through USB cable (MCP protocol)
-
-##### Real-World Workflow  
-1. User asks AI to solve complex equation  
-2. Desktop (base AI) checks its "USB ports":  
-   - `if problem == "hard_math":`  
-   - `    use USB_MATH_SERVER`  
-3. USB math server returns:  
-   - Step-by-step solution  
-   - Confidence score (like error margins)  
-   - Alternative approaches (different "calculation modes")
-
-#### Why This Analogy Works  
-- **Hot-swapping**: Change USB tools while system runs  
-- **Specialization**: Different USBs for math/code/art  
-- **Resource Limits**: Complex work offloaded to USB hardware  
-- **Standard Interface**: All USBs use same port shape (MCP protocol)  
-
-Just like you might use a USB security dongle for protected software, MCP lets AI models temporarily "borrow" specialized brains for tough problems, then return to normal operation.
-
-### More Technical Answer
-
-Model enhancement in the context of the Model Context Protocol (MCP) refers to improving AI capabilities through structured integration of external reasoning tools and data sources. The Sequential Thinking MCP Server demonstrates this by adding dynamic problem-solving layers to foundational models like Claude 3.5 Sonnet.
-
-**Mechanics of Reasoning Component Delivery:**
-
-#### Server-Side Implementation
-MCP servers expose reasoning components through:
-1. **Tool registration** - Servers define executable functions with input/output schemas:
-```java
-// Java server configuration example
-syncServer.addTool(syncToolRegistration);
-syncServer.addResource(syncResourceRegistration);
-```
-2. **Capability negotiation** - During initialization, servers advertise available components through protocol handshakes:
-- Protocol version compatibility checks
-- Resource availability declarations
-- Supported operation listings
-
-3. **Request handling** - Servers process JSON-RPC messages containing:
-- Component identifiers
-- Parameter payloads
-- Execution context metadata
-
-#### Client-Side Interaction
-MCP clients discover and utilize reasoning components through:
-1. **Component discovery** via `list_tools` requests:
-```python
-# Python client example
-response = await self.session.list_tools()
-tools = response.tools
-```
-2. **Dynamic invocation** using standardized message formats:
-- Request messages specify target component and parameters
-- Notifications stream intermediate results
-- Errors propagate with structured codes
-
-3. **Context maintenance** through session persistence:
-- Conversation history tracking
-- Resource handle caching
-- Partial result aggregation
-
-#### Protocol Execution Flow
-The component delivery process follows strict sequencing:
-1. **Connection establishment**
-   - TCP/HTTP handshake
-   - Capability exchange (server ↔ client)
-   - Security context negotiation
-
-2. **Component resolution**
-   - Client selects appropriate tool from server registry
-   - Parameter validation against schema
-   - Resource binding (e.g., database connections)
-
-3. **Execution lifecycle**
-   - Request: Client → Server (JSON-RPC)
-   - Processing: Server → Tool runtime
-   - Response: Server → Client (structured JSON)
-
-Modern implementations like Rhino's Grasshopper integration demonstrate real-world mechanics:
-```python
-# Rhino MCP server command processing
-Rhino.RhinoApp.InvokeOnUiThread(lambda: process_command(cmd))
-response = get_response() # Capture Grasshopper outputs
-writer.WriteLine(response) # Return structured results
-```
-
-This architecture enables dynamic enhancement of AI capabilities through:
-- **Pluggable reasoning modules** (add/remove without system restart)
-- **Cross-platform interoperability** (Python ↔ Java ↔ C# components)
-- **Progressive disclosure** of complex functionality
-- **Versioned capabilities** for backward compatibility
-
-The protocol's transport-agnostic design ensures consistent component delivery across:
-- Local stdio processes
-- HTTP/SSE cloud endpoints
-- Custom binary protocols
-- Hybrid edge computing setups

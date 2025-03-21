@@ -1,14 +1,14 @@
 {
-    "name": "@waldzellai/clear-thought",
-    "version": "0.0.2",
-    "description": "MCP server for systematic thinking, mental models, debugging approaches, and memory management",
+    "name": "@waldzellai/stochasticthinking",
+    "version": "0.0.1",
+    "description": "MCP server for stochastic algorithms and probabilistic decision making",
     "license": "MIT",
     "author": "Waldzell AI",
-    "homepage": "https://github.com/waldzellai/clear-thought",
-    "bugs": "https://github.com/waldzellai/clear-thought/issues",
+    "homepage": "https://github.com/waldzellai/stochasticthinking",
+    "bugs": "https://github.com/waldzellai/stochasticthinking/issues",
     "type": "module",
     "bin": {
-        "mcp-server-clear-thought": "dist/index.js"
+        "mcp-server-stochasticthinking": "dist/index.js"
     },
     "files": [
         "dist",
@@ -23,7 +23,7 @@
         "prebuild": "npm run clean",
         "prepublishOnly": "npm run build",
         "start": "node dist/index.js",
-        "docker": "docker build -t waldzellai/clear-thought .",
+        "docker": "docker build -t waldzellai/stochasticthinking .",
         "dev": "npm run watch",
         "test": "echo \"No tests yet\" && exit 0",
         "lint": "echo \"No linting configured\" && exit 0",
@@ -31,7 +31,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/waldzellai/clear-thought.git"
+        "url": "https://github.com/waldzellai/stochasticthinking.git"
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.5.0",
@@ -47,9 +47,11 @@
     "keywords": [
         "mcp",
         "sequential-thinking",
-        "mental-models",
-        "debugging",
-        "problem-solving",
+        "stochastic-algorithms",
+        "probabilistic-decision-making",
+        "markov-decision-process",
+        "monte-carlo",
+        "reinforcement-learning",
         "ai",
         "cognitive-tools"
     ],

@@ -1,5 +1,7 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
+build:
+  dockerfile: Dockerfile
 startCommand:
   type: stdio
   configSchema:
@@ -7,6 +9,8 @@ startCommand:
     type: object
     required: []
     properties: {}
+    description: No configuration required.
   commandFunction:
     # A function that produces the CLI command to start the MCP on stdio.
     |-
+    config => ({command:'node', args:['dist/index.js']})
