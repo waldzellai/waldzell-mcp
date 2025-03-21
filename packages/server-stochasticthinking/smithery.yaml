@@ -7,7 +7,6 @@ startCommand:
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
-    required: []
     properties: {}
     description: No configuration required.
   commandFunction:

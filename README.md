@@ -1,188 +1,131 @@
-# @waldzellai/mcp-servers
+# Waldzell MCP Servers
 
-[![smithery badge](https://smithery.ai/badge/@waldzellai/mcp-servers)](https://smithery.ai/server/@waldzellai/mcp-servers)
+This is a Turborepo-powered monorepo containing MCP (Model Context Protocol) servers for various AI assistant integrations.
 
-A collection of Model Context Protocol (MCP) servers providing various capabilities for AI assistants.
+## What's inside?
 
-## Packages
+### Packages
 
-### [@waldzellai/clear-thought](packages/server-clear-thought)
-An MCP server providing advanced problem-solving capabilities through:
-- Sequential thinking with dynamic thought evolution
-- Mental models for structured problem decomposition [from a list provided by James Clear's website](https://jamesclear.com/mental-models)
-- Systematic debugging approaches
+- **[yelp-fusionai-mcp](./packages/yelp-fusionai-mcp)** - MCP server for Yelp Fusion API
+- **[server-stochasticthinking](./packages/server-stochasticthinking)** - Stochastic thinking MCP server
+- **[server-clear-thought](./packages/server-clear-thought)** - Clear thought MCP server
+- **[common](./packages/common)** - Shared utilities and types
 
-### [@waldzellai/stochasticthinking](packages/server-stochasticthinking)
-An MCP server extending sequential thinking with advanced stochastic algorithms for better decision-making:
-- Markov Decision Processes (MDPs) for optimizing long-term decision sequences
-- Monte Carlo Tree Search (MCTS) for exploring large decision spaces
-- Multi-Armed Bandit Models for balancing exploration vs exploitation
-- Bayesian Optimization for decisions under uncertainty
-- Hidden Markov Models (HMMs) for inferring latent states
+### Utilities
 
-Helps AI assistants break out of local minima by considering multiple possible futures and strategically exploring alternative approaches.
+This monorepo uses [Turborepo](https://turbo.build/repo) with [NPM Workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces).
 
-## Development
+- [Turborepo](https://turbo.build/repo) — High-performance build system for monorepos
+- [Changesets](https://github.com/changesets/changesets) — Managing versioning and changelogs
+- [GitHub Actions](https://github.com/features/actions) — Automated workflows
+- [Smithery](https://smithery.ai) — Deployment platform for MCP servers
 
-This is a monorepo using npm workspaces. To get started:
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18 or higher
+- npm 8 or higher
+
+### Installation
+
+Clone the repository and install dependencies:
 
 ```bash
-# Install dependencies for all packages
+git clone https://github.com/waldzellai/mcp-servers.git
+cd mcp-servers
 npm install
+```
 
-# Build all packages
+### Development
+
+To develop all packages:
+
+```bash
+npm run dev
+```
+
+### Building
+
+To build all packages:
+
+```bash
 npm run build
+```
 
-# Clean all packages
-npm run clean
+The build output will be in each package's `dist/` directory.
 
-# Test all packages
+### Testing
+
+```bash
 npm run test
 ```
 
-## Package Management
+### Linting
 
-Each package in the `packages/` directory is published independently to npm under the `@waldzellai` organization scope.
+```bash
+npm run lint
+```
 
-To create a new package:
-1. Create a new directory under `packages/`
-2. Initialize with required files (package.json, src/, etc.)
-3. Add to workspaces in root package.json if needed
+### Deploying to Smithery
+
+This repo is set up to easily deploy packages to Smithery:
+
+```bash
+# Deploy all packages
+npm run deploy
+
+# Deploy specific packages
+npm run smithery:yelp
+npm run smithery:stochastic
+npm run smithery:clear-thought
+```
+
+## Workflow
+
+### Adding a new feature
+
+1. Create a new branch
+2. Make your changes
+3. Add a changeset (documents what's changed for version bumping):
+   ```bash
+   npx changeset
+   ```
+4. Push your changes
+
+### Releasing new versions
+
+We use Changesets to manage versions. Create a PR with your changes and Changesets will create a release PR that you can merge to release new versions.
+
+For manual releases:
+
+```bash
+npm run publish-packages
+```
+
+### Adding a New Package
+
+1. Create a new directory in the `packages` directory
+2. Initialize the package with `npm init`
+3. Add your source code
+4. Update `turbo.json` pipeline if needed
+5. Add a `smithery.yaml` file if you want to deploy to Smithery
+
+## Turborepo
+
+### Remote Caching
+
+Turborepo can use a remote cache to share build artifacts across machines. To enable Remote Caching:
+
+```bash
+npx turbo login
+npx turbo link
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a pull request.
 
 ## License
-MIT
 
-## Understanding MCP Model Enhancement
-
-### Less Technical Answer 
-
-Here's a reframed explanation using USB/hardware analogies:
-
-#### Model Enhancement as USB Add-Ons  
-Think of the core AI model as a basic desktop computer. Model enhancement through MCP is like adding specialized USB devices to expand its capabilities. The Sequential Thinking server acts like a plug-in math coprocessor chip (like old 8087 FPU chips) that boosts the computer's number-crunching abilities.
-
-**How USB-Style Enhancement Works:**
-
-##### Basic Setup
-- **Desktop (Base AI Model)**: Handles general tasks  
-- **USB Port (MCP Interface)**: Standard connection point  
-- **USB Stick (MCP Server)**: Contains special tools (like a "math helper" program)
-
-##### Plug-and-Play Mechanics  
-1. **Driver Installation (Server Registration)**  
-   ```python
-   # Simplified version of USB "driver setup"
-   def install_mcp_server(usb_port, server_files):
-       usb_port.register_tools(server_files['tools'])
-       usb_port.load_drivers(server_files['drivers'])
-   ```
-   - Server provides "driver" APIs the desktop understands  
-   - Tools get added to the system tray (available services)
-
-2. **Tool Execution (Using the USB)**  
-   - Desktop sends request like a keyboard input:  
-   `Press F1 to use math helper`  
-   - USB processes request using its dedicated hardware:  
-   ```python
-   def math_helper(input):
-       # Dedicated circuit on USB processes this
-       return calculation_results
-   ```
-   - Results return through USB cable (MCP protocol)
-
-##### Real-World Workflow  
-1. User asks AI to solve complex equation  
-2. Desktop (base AI) checks its "USB ports":  
-   - `if problem == "hard_math":`  
-   - `    use USB_MATH_SERVER`  
-3. USB math server returns:  
-   - Step-by-step solution  
-   - Confidence score (like error margins)  
-   - Alternative approaches (different "calculation modes")
-
-#### Why This Analogy Works  
-- **Hot-swapping**: Change USB tools while system runs  
-- **Specialization**: Different USBs for math/code/art  
-- **Resource Limits**: Complex work offloaded to USB hardware  
-- **Standard Interface**: All USBs use same port shape (MCP protocol)  
-
-Just like you might use a USB security dongle for protected software, MCP lets AI models temporarily "borrow" specialized brains for tough problems, then return to normal operation.
-
-### More Technical Answer
-
-Model enhancement in the context of the Model Context Protocol (MCP) refers to improving AI capabilities through structured integration of external reasoning tools and data sources. The Sequential Thinking MCP Server demonstrates this by adding dynamic problem-solving layers to foundational models like Claude 3.5 Sonnet.
-
-**Mechanics of Reasoning Component Delivery:**
-
-#### Server-Side Implementation
-MCP servers expose reasoning components through:
-1. **Tool registration** - Servers define executable functions with input/output schemas:
-```java
-// Java server configuration example
-syncServer.addTool(syncToolRegistration);
-syncServer.addResource(syncResourceRegistration);
-```
-2. **Capability negotiation** - During initialization, servers advertise available components through protocol handshakes:
-- Protocol version compatibility checks
-- Resource availability declarations
-- Supported operation listings
-
-3. **Request handling** - Servers process JSON-RPC messages containing:
-- Component identifiers
-- Parameter payloads
-- Execution context metadata
-
-#### Client-Side Interaction
-MCP clients discover and utilize reasoning components through:
-1. **Component discovery** via `list_tools` requests:
-```python
-# Python client example
-response = await self.session.list_tools()
-tools = response.tools
-```
-2. **Dynamic invocation** using standardized message formats:
-- Request messages specify target component and parameters
-- Notifications stream intermediate results
-- Errors propagate with structured codes
-
-3. **Context maintenance** through session persistence:
-- Conversation history tracking
-- Resource handle caching
-- Partial result aggregation
-
-#### Protocol Execution Flow
-The component delivery process follows strict sequencing:
-1. **Connection establishment**
-   - TCP/HTTP handshake
-   - Capability exchange (server ↔ client)
-   - Security context negotiation
-
-2. **Component resolution**
-   - Client selects appropriate tool from server registry
-   - Parameter validation against schema
-   - Resource binding (e.g., database connections)
-
-3. **Execution lifecycle**
-   - Request: Client → Server (JSON-RPC)
-   - Processing: Server → Tool runtime
-   - Response: Server → Client (structured JSON)
-
-Modern implementations like Rhino's Grasshopper integration demonstrate real-world mechanics:
-```python
-# Rhino MCP server command processing
-Rhino.RhinoApp.InvokeOnUiThread(lambda: process_command(cmd))
-response = get_response() # Capture Grasshopper outputs
-writer.WriteLine(response) # Return structured results
-```
-
-This architecture enables dynamic enhancement of AI capabilities through:
-- **Pluggable reasoning modules** (add/remove without system restart)
-- **Cross-platform interoperability** (Python ↔ Java ↔ C# components)
-- **Progressive disclosure** of complex functionality
-- **Versioned capabilities** for backward compatibility
-
-The protocol's transport-agnostic design ensures consistent component delivery across:
-- Local stdio processes
-- HTTP/SSE cloud endpoints
-- Custom binary protocols
-- Hybrid edge computing setups
+This project is licensed under the MIT License - see the LICENSE file for details.

@@ -23,7 +23,11 @@
         "prebuild": "npm run clean",
         "prepublishOnly": "npm run build",
         "start": "node dist/index.js",
-        "docker": "docker build -t waldzellai/clear-thought ."
+        "docker": "docker build -t waldzellai/clear-thought .",
+        "dev": "npm run watch",
+        "test": "echo \"No tests yet\" && exit 0",
+        "lint": "echo \"No linting configured\" && exit 0",
+        "deploy": "smithery deploy"
     },
     "repository": {
         "type": "git",

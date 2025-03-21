@@ -1,16 +1,29 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ES2020",
-    "moduleResolution": "node",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "outDir": "dist",
-    "rootDir": ".",
-    "declaration": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "outDir": "./dist",
+    "sourceMap": true,
+    "declaration": true,
+    "resolveJsonModule": true
   },
-  "include": ["*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "index.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "packages"
+  ],
+  "references": [
+    { "path": "./packages/common" },
+    { "path": "./packages/yelp-fusionai-mcp" },
+    { "path": "./packages/server-stochasticthinking" },
+    { "path": "./packages/server-clear-thought" }
+  ]
 }
