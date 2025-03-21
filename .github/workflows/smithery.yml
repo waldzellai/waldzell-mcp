@@ -49,7 +49,7 @@ jobs:
           ${{ runner.os }}-yarn-
     
     - name: Install dependencies
-      run: yarn install --immutable
+      run: yarn install --mode=update-lockfile
     
     - name: Install Smithery CLI
       run: npm install -g @smithery/cli
