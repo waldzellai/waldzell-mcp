@@ -39,12 +39,19 @@ npm-debug.log*
 *.swo
 
 # Other files not needed in the package
-CONTRIBUTING.md
-CHANGELOG.md
 create-template.sh
-llms.txt
 typescript-sdk/
 packages/
+fix-types.js
+fix-types.ts
+fix-error-types.js
+.git/
+.git_backup/
+Dockerfile
+smithery.yaml
 
-# Keep dist folder (override .gitignore)
+# Keep important files (override above patterns)
 !dist/
+!README.md
+!LICENSE
+!CHANGELOG.md
