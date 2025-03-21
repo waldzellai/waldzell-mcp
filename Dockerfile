@@ -1,33 +1,31 @@
-FROM node:18-slim
+FROM node:18-slim AS builder
 
-# Create app directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files first for better layer caching
+COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
 # Copy source files
-COPY . .
+COPY tsconfig.json ./
+COPY src ./src
 
-# Build the project
+# Build the package
 RUN npm run build
 
-# Remove development dependencies
-RUN npm prune --production
+# Use a smaller image for production
+FROM node:18-slim
 
-# Set executable permissions
-RUN chmod +x dist/index.js
+WORKDIR /app
 
-# Run as non-root user
-USER node
+# Copy only the necessary files from the builder stage
+COPY --from=builder /app/package.json /app/package-lock.json ./
+COPY --from=builder /app/dist ./dist
 
-# Start the server
+# Install production dependencies only
+RUN npm ci --only=production
+
+# Command to run the application
 CMD ["node", "dist/index.js"]
-
-# Label the image
-LABEL org.opencontainers.image.source="https://github.com/waldzellai/clear-thought"
-LABEL org.opencontainers.image.description="MCP server for sequential thinking, mental models, and debugging approaches"
-LABEL org.opencontainers.image.licenses="MIT"

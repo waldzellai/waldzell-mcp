@@ -1,15 +1,29 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
 build:
-  dockerfile: packages/server-clear-thought/Dockerfile
+  dockerfile: Dockerfile
 startCommand:
   type: stdio
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
-    properties: {}
-    description: No configuration required.
+    properties:
+      YELP_API_KEY:
+        type: string
+        description: API key for the Yelp Fusion API
+      YELP_CLIENT_ID:
+        type: string
+        description: Client ID for the Yelp Fusion API
+    required: ["YELP_API_KEY"]
+    description: Configuration for the Yelp Fusion MCP server.
   commandFunction:
     # A function that produces the CLI command to start the MCP on stdio.
     |-
-    config => ({command:'node', args:['dist/index.js']})
+    config => {
+      // Set environment variables from config
+      Object.entries(config).forEach(([key, value]) => {
+        process.env[key] = value;
+      });
+      
+      return {command:'node', args:['dist/index.js']};
+    }

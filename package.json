@@ -1,10 +1,9 @@
 {
-  "name": "@waldzellai/mcp-servers",
-  "version": "0.0.1",
-  "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "name": "server-yelp-fusionai",
+  "version": "0.1.5",
+  "description": "MCP server for Yelp Fusion AI API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -19,14 +18,22 @@
     "deploy": "turbo run deploy",
     "publish-packages": "turbo run build lint test && changeset publish"
   },
-  "author": "waldzellai",
-  "license": "MIT",
-  "engines": {
-    "node": ">=18"
+  "keywords": [
+    "yelp",
+    "fusion",
+    "ai",
+    "mcp",
+    "model-context-protocol"
+  ],
+  "bin": {
+    "server-yelp-fusionai": "./dist/index.js"
   },
+  "author": "glassBead for Waldzell AI",
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/waldzellai/mcp-servers.git"
+    "url": "https://github.com/waldzellai/waldzell-mcp.git",
+    "directory": "packages/yelp-fusionai-mcp"
   },
   "devDependencies": {
     "@changesets/cli": "^2.26.2",

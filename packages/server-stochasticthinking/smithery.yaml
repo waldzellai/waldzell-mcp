@@ -2,11 +2,13 @@
 
 build:
   dockerfile: Dockerfile
+
 startCommand:
   type: stdio
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
+
     properties: {}
     description: No configuration required.
   commandFunction:

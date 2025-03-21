@@ -1,41 +1,42 @@
 # Dependencies
 node_modules/
-.pnp/
-.pnp.js
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
 
-# Build outputs
+# Build
 dist/
-build/
-*.tsbuildinfo
 
-# Environment files
+# Testing
+coverage/
+
+# Environment
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Debug logs
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# IDE and editor files
+# Editor directories and files
 .idea/
 .vscode/
-*.swp
-*.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 .DS_Store
-
-# Project specific
-memory-bank/
-packages/mcp-agent/
-packages/vscode-shortcuts/
-packages/mithrilsessionmgmt/
-
-# Test coverage
-coverage/
-
-# Temporary files
-*.log
-.tmp/
