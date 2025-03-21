@@ -1,6 +1,6 @@
 {
   "name": "yelp-fusionai-mcp",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "MCP server for Yelp Fusion AI API",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,7 +11,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
-    "format": "prettier --write \"src/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\"",
+    "clean": "rm -rf dist",
+    "deploy": "smithery deploy"
   },
   "keywords": [
     "yelp",
@@ -20,8 +22,17 @@
     "mcp",
     "model-context-protocol"
   ],
-  "author": "",
+  "author": "glassBead for Waldzell AI",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/waldzellai/waldzell-mcp.git",
+    "directory": "packages/yelp-fusionai-mcp"
+  },
+  "homepage": "https://github.com/waldzellai/waldzell-mcp/tree/main/packages/yelp-fusionai-mcp",
+  "bugs": {
+    "url": "https://github.com/waldzellai/waldzell-mcp/issues"
+  },
   "dependencies": {
     "axios": "^1.6.7",
     "dotenv": "^16.4.1",

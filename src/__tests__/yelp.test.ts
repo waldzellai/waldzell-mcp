@@ -1,12 +1,7 @@
 import axios from 'axios';
 import yelpService from '../services/yelp';
 
-// Mock axios
-jest.mock('axios', () => ({
-  create: jest.fn(() => ({
-    post: jest.fn(),
-  })),
-}));
+// Use global axios mock
 
 describe('YelpService', () => {
   beforeEach(() => {

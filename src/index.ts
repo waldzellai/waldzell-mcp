@@ -9,8 +9,26 @@ import {
   RespondToReviewResponse
 } from './services/api/respond-reviews';
 
-// Define our implementation
-const server = new McpServer({
+/**
+ * Helper function to start the MCP server on a specific port
+ * @param port Port number to listen on (default: 3000)
+ * @returns The server instance
+ */
+export function startServer(port = 3000) {
+  const server = createServer();
+  server.listen(port, () => {
+    console.log(`Yelp Fusion MCP server running on port ${port}`);
+  });
+  return server;
+}
+
+/**
+ * Create a new MCP server instance without starting it
+ * @returns The configured MCP server instance
+ */
+export function createServer() {
+  // Define our implementation
+  const server = new McpServer({
   name: 'yelp-fusionai-mcp',
   version: '0.1.0',
 }, {
@@ -2333,10 +2351,19 @@ class StdioTransport {
   }
 }
 
+/**
+ * Legacy function for backward compatibility
+ * @deprecated Use startServer() instead
+ */
 async function main() {
+  // This function is kept for backward compatibility
+  // Now it will use the transported passed to it by the startServer function
+  // when called without arguments
   const transport = new StdioTransport();
+  const server = createServer();
   await server.connect(transport);
   console.error('Yelp Fusion AI MCP server started and connected via stdio');
+  return server;
 }
 
 /**
@@ -2571,7 +2598,17 @@ server.tool(
   },
 );
 
-main().catch(error => {
-  console.error('Failed to start Yelp Fusion AI MCP server:', error);
-  process.exit(1);
-});
+  return server;
+}
+
+// Only run the server automatically if this module is executed directly, not when imported
+if (require.main === module) {
+  // For backward compatibility, we keep the main function but it will use our new startServer function
+  startServer().catch(error => {
+    console.error('Failed to start Yelp Fusion AI MCP server:', error);
+    process.exit(1);
+  });
+}
+
+// Export the McpServer class for advanced usage
+export { McpServer };

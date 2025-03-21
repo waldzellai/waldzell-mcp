@@ -1,44 +1,50 @@
-# Source
+# Source files
 src/
-typescript-sdk/
+tsconfig.json
+jest.config.js
 
 # Tests
-**/__tests__
+**/__tests__/
 **/*.test.ts
-**/*.spec.ts
-jest.config.js
+**/__mocks__/
 coverage/
 
-# Config files
-.eslintrc*
-tsconfig.json
-
-# Environment
-.env
-.env.example
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# IDE and editor files
+# Development tools
+.eslintrc.js
+.eslintrc.json
+.prettierrc
+.prettierrc.json
 .vscode/
+.github/
+.gitignore
+
+# Documentation and examples
+docs/
+examples/
+
+# Temporary files
+temp/
+tmp/
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.*
+
+# Editor and OS files
+.DS_Store
 .idea/
 *.swp
 *.swo
 
-# Logs
-logs
-*.log
-npm-debug.log*
+# Other files not needed in the package
+CONTRIBUTING.md
+CHANGELOG.md
+create-template.sh
+llms.txt
+typescript-sdk/
+packages/
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Dependencies
-node_modules/
-.npm
-.node_repl_history
+# Keep dist folder (override .gitignore)
+!dist/
