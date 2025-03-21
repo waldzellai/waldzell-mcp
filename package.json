@@ -1,6 +1,6 @@
 {
   "name": "yelp-fusionai-mcp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "MCP server for Yelp Fusion AI API",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
