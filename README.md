@@ -14,9 +14,10 @@ This is a Turborepo-powered monorepo containing MCP (Model Context Protocol) ser
 
 ### Utilities
 
-This monorepo uses [Turborepo](https://turbo.build/repo) with [NPM Workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces).
+This monorepo uses [Turborepo](https://turbo.build/repo) with [Yarn 4 Workspaces](https://yarnpkg.com/features/workspaces).
 
 - [Turborepo](https://turbo.build/repo) — High-performance build system for monorepos
+- [Yarn 4](https://yarnpkg.com/) — Modern package management with PnP support
 - [Changesets](https://github.com/changesets/changesets) — Managing versioning and changelogs
 - [GitHub Actions](https://github.com/features/actions) — Automated workflows
 - [Smithery](https://smithery.ai) — Deployment platform for MCP servers
@@ -26,7 +27,7 @@ This monorepo uses [Turborepo](https://turbo.build/repo) with [NPM Workspaces](h
 ### Prerequisites
 
 - Node.js 18 or higher
-- npm 8 or higher
+- [Corepack](https://nodejs.org/api/corepack.html) enabled (`corepack enable`)
 
 ### Installation
 
@@ -35,7 +36,7 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/waldzellai/mcp-servers.git
 cd mcp-servers
-npm install
+yarn install
 ```
 
 ### Development
@@ -43,7 +44,7 @@ npm install
 To develop all packages:
 
 ```bash
-npm run dev
+yarn dev
 ```
 
 ### Building
@@ -51,7 +52,7 @@ npm run dev
 To build all packages:
 
 ```bash
-npm run build
+yarn build
 ```
 
 The build output will be in each package's `dist/` directory.
@@ -59,13 +60,13 @@ The build output will be in each package's `dist/` directory.
 ### Testing
 
 ```bash
-npm run test
+yarn test
 ```
 
 ### Linting
 
 ```bash
-npm run lint
+yarn lint
 ```
 
 ### Deploying to Smithery
@@ -74,12 +75,12 @@ This repo is set up to easily deploy packages to Smithery:
 
 ```bash
 # Deploy all packages
-npm run deploy
+yarn deploy
 
 # Deploy specific packages
-npm run smithery:yelp-fusion
-npm run smithery:stochastic
-npm run smithery:clear-thought
+yarn smithery:yelp-fusion
+yarn smithery:stochastic
+yarn smithery:clear-thought
 ```
 
 ## Workflow
@@ -90,7 +91,7 @@ npm run smithery:clear-thought
 2. Make your changes
 3. Add a changeset (documents what's changed for version bumping):
    ```bash
-   npx changeset
+   yarn changeset
    ```
 4. Push your changes
 
@@ -101,16 +102,17 @@ We use Changesets to manage versions. Create a PR with your changes and Changese
 For manual releases:
 
 ```bash
-npm run publish-packages
+yarn publish-packages
 ```
 
 ### Adding a New Package
 
 1. Create a new directory in the `packages` directory
-2. Initialize the package with `npm init`
+2. Initialize the package with `yarn init`
 3. Add your source code
 4. Update `turbo.json` pipeline if needed
 5. Add a `smithery.yaml` file if you want to deploy to Smithery
+6. Run `yarn install` at the root to update workspaces
 
 ## Turborepo
 
@@ -119,8 +121,8 @@ npm run publish-packages
 Turborepo can use a remote cache to share build artifacts across machines. To enable Remote Caching:
 
 ```bash
-npx turbo login
-npx turbo link
+yarn dlx turbo login
+yarn dlx turbo link
 
 # Yelp Fusion MCP Server
 
