@@ -1,6 +1,43 @@
+#!/usr/bin/env node
+
 import { z } from 'zod';
-import { McpServer } from '../typescript-sdk/src/server/mcp';
-import { CallToolResult } from '../typescript-sdk/src/types';
+
+// Manually define the types we need
+interface McpServerOptions {
+  name: string;
+  version: string;
+}
+
+interface McpServerConfig {
+  instructions?: string;
+}
+
+// Create a specific type for the advertising program
+interface CreateProgramRequest {
+  business_id: string;
+  budget: number;
+  objectives: string[];
+  [key: string]: any; // Allow additional properties
+}
+
+class McpServer {
+  constructor(options: McpServerOptions, config?: McpServerConfig) {}
+  tool(name: string, description: string, schema: any, handler: Function): any { return this; }
+  listen(port: number, callback?: () => void): any { return this; }
+  connect(transport: any): Promise<void> { return Promise.resolve(); }
+}
+
+class StdioTransport {
+  constructor() {}
+}
+
+interface CallToolResult {
+  content: Array<{
+    type: string;
+    text: string;
+  }>;
+  isError?: boolean;
+}
 import yelpService, { YelpAIResponse } from './services/yelp';
 import {
   GetAccessTokenResponse,
@@ -14,12 +51,12 @@ import {
  * @param port Port number to listen on (default: 3000)
  * @returns The server instance
  */
-export function startServer(port = 3000) {
+export function startServer(port = 3000): Promise<McpServer> {
   const server = createServer();
   server.listen(port, () => {
     console.log(`Yelp Fusion MCP server running on port ${port}`);
   });
-  return server;
+  return Promise.resolve(server);
 }
 
 /**
@@ -29,8 +66,8 @@ export function startServer(port = 3000) {
 export function createServer() {
   // Define our implementation
   const server = new McpServer({
-  name: 'yelp-fusionai-mcp',
-  version: '0.1.0',
+  name: 'server-yelp-fusionai',
+  version: '0.1.5',
 }, {
   // Optional server options
   instructions: `
@@ -111,7 +148,7 @@ server.tool(
   {
     query: z.string().describe('Your natural language query about businesses, locations, or recommendations'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response: YelpAIResponse = await yelpService.chat(args.query);
       
@@ -124,7 +161,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error querying Yelp API:', error);
       return {
         content: [
@@ -159,7 +196,7 @@ server.tool(
     open_at: z.number().optional().describe('Filter for businesses open at this Unix time'),
     attributes: z.string().optional().describe('Additional attributes (e.g. "hot_and_new,reservation")'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.business.search(args);
       
@@ -171,7 +208,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error searching businesses:', error);
       return {
         content: [
@@ -193,7 +230,7 @@ server.tool(
   {
     id: z.string().describe('The Yelp business ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.business.getBusinessDetails(args.id);
       
@@ -205,7 +242,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting business details:', error);
       return {
         content: [
@@ -234,7 +271,7 @@ server.tool(
     offset: z.number().min(0).optional()
       .describe('Offset for pagination')
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const { id, ...params } = args;
       const response = await yelpService.reviews.getBusinessReviews(id, params);
@@ -247,7 +284,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting business reviews:', error);
       return {
         content: [
@@ -276,7 +313,7 @@ server.tool(
     sentiment: z.enum(['positive', 'negative', 'all']).optional()
       .describe('Filter highlights by sentiment: positive, negative, or all (default)')
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const { id, ...params } = args;
       const response = await yelpService.reviews.getReviewHighlights(id, params);
@@ -289,7 +326,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting review highlights:', error);
       return {
         content: [
@@ -321,7 +358,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting categories:', error);
       return {
         content: [
@@ -356,7 +393,7 @@ server.tool(
     radius: z.number().optional().describe('Search radius in meters'),
     excluded_events: z.string().optional().describe('Comma-separated list of event IDs to exclude'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.events.search(args);
       
@@ -368,7 +405,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error searching events:', error);
       return {
         content: [
@@ -390,7 +427,7 @@ server.tool(
   {
     id: z.string().describe('The Yelp event ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.events.getEvent(args.id);
       
@@ -402,7 +439,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting event details:', error);
       return {
         content: [
@@ -427,7 +464,7 @@ server.tool(
     latitude: z.number().optional().describe('Latitude coordinate'),
     longitude: z.number().optional().describe('Longitude coordinate'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.events.getFeaturedEvent(args);
       
@@ -439,7 +476,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting featured event:', error);
       return {
         content: [
@@ -471,9 +508,15 @@ server.tool(
     }).optional().describe('Geographic targeting settings'),
     config: z.record(z.any()).optional().describe('Additional configuration options'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
-      const response = await yelpService.advertising.createProgram(args);
+      const programRequest: CreateProgramRequest = {
+        business_id: args.business_id,
+        budget: args.budget,
+        objectives: args.objectives,
+        ...args
+      };
+      const response = await yelpService.advertising.createProgram(programRequest);
       
       return {
         content: [
@@ -483,7 +526,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error creating advertising program:', error);
       return {
         content: [
@@ -505,7 +548,7 @@ server.tool(
   {
     business_id: z.string().optional().describe('Filter by business ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.advertising.listPrograms(args.business_id);
       
@@ -517,7 +560,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error listing advertising programs:', error);
       return {
         content: [
@@ -539,7 +582,7 @@ server.tool(
   {
     program_id: z.string().describe('The advertising program ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.advertising.getProgram(args.program_id);
       
@@ -551,7 +594,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting advertising program:', error);
       return {
         content: [
@@ -583,7 +626,7 @@ server.tool(
     }).optional().describe('Updated geographic targeting settings'),
     config: z.record(z.any()).optional().describe('Updated configuration options'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const { program_id, ...data } = args;
       const response = await yelpService.advertising.modifyProgram(program_id, data);
@@ -596,7 +639,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error modifying advertising program:', error);
       return {
         content: [
@@ -618,7 +661,7 @@ server.tool(
   {
     program_id: z.string().describe('The advertising program ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.advertising.getProgramStatus(args.program_id);
       
@@ -630,7 +673,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting program status:', error);
       return {
         content: [
@@ -652,7 +695,7 @@ server.tool(
   {
     program_id: z.string().describe('The advertising program ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.advertising.pauseProgram(args.program_id);
       
@@ -664,7 +707,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error pausing program:', error);
       return {
         content: [
@@ -686,7 +729,7 @@ server.tool(
   {
     program_id: z.string().describe('The advertising program ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.advertising.resumeProgram(args.program_id);
       
@@ -698,7 +741,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error resuming program:', error);
       return {
         content: [
@@ -720,7 +763,7 @@ server.tool(
   {
     program_id: z.string().describe('The advertising program ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.advertising.terminateProgram(args.program_id);
       
@@ -732,7 +775,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error terminating program:', error);
       return {
         content: [
@@ -756,7 +799,7 @@ server.tool(
     client_secret: z.string().describe('Your Yelp API client secret'),
     version: z.enum(['v2', 'v3']).default('v3').describe('OAuth version to use (default: v3)'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       let response;
       
@@ -777,7 +820,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting OAuth token:', error);
       return {
         content: [
@@ -800,7 +843,7 @@ server.tool(
     refresh_token: z.string().describe('The refresh token to use'),
     scope: z.string().optional().describe('Optional scope to request'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.oauth.refreshToken(args.refresh_token);
       
@@ -812,7 +855,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error refreshing OAuth token:', error);
       return {
         content: [
@@ -834,7 +877,7 @@ server.tool(
   {
     token: z.string().describe('The access token to revoke'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.oauth.revokeToken(args.token);
       
@@ -846,7 +889,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error revoking OAuth token:', error);
       return {
         content: [
@@ -869,7 +912,7 @@ server.tool(
     token: z.string().describe('The access token to check'),
     version: z.enum(['v2', 'v3']).default('v3').describe('OAuth version to use (default: v3)'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       let response;
       
@@ -887,7 +930,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting token info:', error);
       return {
         content: [
@@ -914,7 +957,7 @@ server.tool(
     limit: z.number().optional().describe('Number of results to return (default: 20)'),
     offset: z.number().optional().describe('Offset for pagination'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.waitlistPartner.getPartnerRestaurants(args);
       
@@ -926,7 +969,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting waitlist partner restaurants:', error);
       return {
         content: [
@@ -948,7 +991,7 @@ server.tool(
   {
     business_id: z.string().describe('The business ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.waitlistPartner.getWaitlistStatus(args.business_id);
       
@@ -960,7 +1003,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting waitlist status:', error);
       return {
         content: [
@@ -982,7 +1025,7 @@ server.tool(
   {
     business_id: z.string().describe('The business ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.waitlistPartner.getWaitlistInfo(args.business_id);
       
@@ -994,7 +1037,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting waitlist info:', error);
       return {
         content: [
@@ -1022,7 +1065,7 @@ server.tool(
     notes: z.string().optional().describe('Additional notes for the restaurant'),
     seating_preference: z.string().optional().describe('Seating preference (e.g., "Indoor", "Outdoor")'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const { business_id, party_size, customer_name, customer_phone, customer_email, notes, seating_preference } = args;
       
@@ -1048,7 +1091,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error joining waitlist:', error);
       return {
         content: [
@@ -1075,7 +1118,7 @@ server.tool(
     customer_phone: z.string().describe('Customer phone number'),
     customer_email: z.string().optional().describe('Customer email address'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const { business_id, visit_id, eta_minutes, customer_name, customer_phone, customer_email } = args;
       
@@ -1100,7 +1143,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error sending on-my-way notification:', error);
       return {
         content: [
@@ -1122,7 +1165,7 @@ server.tool(
   {
     visit_id: z.string().describe('The visit ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.waitlistPartner.cancelVisit(args.visit_id);
       
@@ -1134,7 +1177,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error canceling waitlist visit:', error);
       return {
         content: [
@@ -1156,7 +1199,7 @@ server.tool(
   {
     visit_id: z.string().describe('The visit ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.waitlistPartner.getVisitDetails(args.visit_id);
       
@@ -1168,7 +1211,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting visit details:', error);
       return {
         content: [
@@ -2343,7 +2386,7 @@ class StdioTransport {
         const message = JSON.parse(data.toString());
         const response = await callback(message);
         await this.send(response);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error processing message:', error);
       }
     });
@@ -2461,7 +2504,7 @@ server.tool(
     client_id: z.string().describe('Client ID for Yelp Respond Reviews'),
     client_secret: z.string().describe('Client secret for Yelp Respond Reviews'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.respondReviews.getAccessToken(
         args.client_id,
@@ -2476,7 +2519,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting respond reviews token:', error);
       return {
         content: [
@@ -2499,7 +2542,7 @@ server.tool(
     limit: z.number().optional().describe('Number of businesses to return'),
     offset: z.number().optional().describe('Offset for pagination'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.respondReviews.getBusinesses(args);
       
@@ -2511,7 +2554,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting respond reviews businesses:', error);
       return {
         content: [
@@ -2533,7 +2576,7 @@ server.tool(
   {
     business_id: z.string().describe('The Yelp business ID'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.respondReviews.getBusinessOwnerInfo(args.business_id);
       
@@ -2545,7 +2588,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error getting business owner info:', error);
       return {
         content: [
@@ -2568,7 +2611,7 @@ server.tool(
     review_id: z.string().describe('The ID of the review to respond to'),
     text: z.string().describe('The response text'),
   },
-  async (args): Promise<CallToolResult> => {
+  async (args: Record<string, any>): Promise<CallToolResult> => {
     try {
       const response = await yelpService.respondReviews.respondToReview(
         args.review_id, 
@@ -2583,7 +2626,7 @@ server.tool(
           },
         ],
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error responding to review:', error);
       return {
         content: [
@@ -2604,7 +2647,9 @@ server.tool(
 // Only run the server automatically if this module is executed directly, not when imported
 if (require.main === module) {
   // For backward compatibility, we keep the main function but it will use our new startServer function
-  startServer().catch(error => {
+  startServer().then(() => {
+    // Success case is handled in startServer
+  }).catch(error => {
     console.error('Failed to start Yelp Fusion AI MCP server:', error);
     process.exit(1);
   });

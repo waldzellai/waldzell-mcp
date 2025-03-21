@@ -1,6 +1,6 @@
 # Yelp Fusion MCP Server
 
-[![npm version](https://img.shields.io/npm/v/yelp-fusionai-mcp.svg)](https://www.npmjs.com/package/yelp-fusionai-mcp)
+[![npm version](https://img.shields.io/npm/v/server-yelp-fusionai.svg)](https://www.npmjs.com/package/server-yelp-fusionai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 This package provides an MCP (Model Context Protocol) server that enables natural language communication between Claude and the Yelp Fusion API. Use natural language to search for businesses, read reviews, find events, and more—directly through Claude Desktop.
@@ -30,20 +30,20 @@ Simply ask Claude questions like:
 ## Installation
 
 ```bash
-npm install yelp-fusionai-mcp
+npm install server-yelp-fusionai
 ```
 
 ## Setting Up with Claude Desktop
 
 1. **Install the Package**:
    ```bash
-   npm install yelp-fusionai-mcp
+   npm install server-yelp-fusionai
    ```
 
 2. **Create a Basic Server File** (e.g., `yelp-server.js`):
    ```javascript
    require('dotenv').config();
-   const { startServer } = require('yelp-fusionai-mcp');
+   const { startServer } = require('server-yelp-fusionai');
    
    // Start the server on port 3000 (or any port you prefer)
    startServer(3000).then(() => {
@@ -104,7 +104,7 @@ npm install yelp-fusionai-mcp
 ### Custom Server Configuration
 
 ```javascript
-const { createServer } = require('yelp-fusionai-mcp');
+const { createServer } = require('server-yelp-fusionai');
 
 // Create a server without starting it
 const server = createServer();
@@ -151,7 +151,7 @@ The MCP server exposes several tools for interacting with the Yelp Fusion API:
    }
    ```
 
-See the [full API documentation](https://github.com/waldzellai/waldzell-mcp/tree/main/packages/yelp-fusionai-mcp#api) for details on all available tools and their parameters.
+See the [full API documentation](https://github.com/waldzellai/waldzell-mcp/tree/main/packages/server-yelp-fusionai#api) for details on all available tools and their parameters.
 
 ## Development
 
