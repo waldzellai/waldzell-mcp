@@ -13,6 +13,7 @@ A Model Context Protocol (MCP) server that provides systematic thinking, mental 
 - Rubber Duck Debugging
 - Pareto Principle
 - Occam's Razor
+- Inversion Thinking
 - And many more...
 
 ### Design Patterns

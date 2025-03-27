@@ -303,6 +303,7 @@ Supports various mental models including:
 - Rubber Duck Debugging
 - Pareto Principle
 - Occam's Razor
+- Inversion Thinking
 
 Each model provides a systematic approach to breaking down and solving problems.`,
   inputSchema: {
@@ -316,7 +317,8 @@ Each model provides a systematic approach to breaking down and solving problems.
           "error_propagation",
           "rubber_duck",
           "pareto_principle",
-          "occams_razor"
+          "occams_razor",
+          "inversion_thinking"
         ]
       },
       problem: { type: "string" },
