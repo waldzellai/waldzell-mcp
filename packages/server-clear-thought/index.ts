@@ -304,6 +304,12 @@ Supports various mental models including:
 - Pareto Principle
 - Occam's Razor
 - Inversion Thinking
+- Iterative Thinking
+- Hypothesis-Driven Thinking
+- Multidisciplinary Thinking
+- Bayesian Reasoning
+- Critical Thinking
+- Systems Thinking
 
 Each model provides a systematic approach to breaking down and solving problems.`,
   inputSchema: {
@@ -318,7 +324,13 @@ Each model provides a systematic approach to breaking down and solving problems.
           "rubber_duck",
           "pareto_principle",
           "occams_razor",
-          "inversion_thinking"
+          "inversion_thinking",
+          "iterative_thinking",
+          "hypothesis_driven_thinking",
+          "multidisciplinary_thinking",
+          "bayesian_reasoning",
+          "critical_thinking",
+          "systems_thinking"
         ]
       },
       problem: { type: "string" },
