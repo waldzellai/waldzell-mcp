@@ -355,6 +355,12 @@ Supports various debugging methods including:
 - Backtracking
 - Cause Elimination
 - Program Slicing
+- Log Analysis
+- Static Analysis
+- Root Cause Analysis
+- Delta Debugging
+- Fuzzing
+- Incremental Testing
 
 Each approach provides a structured method for identifying and resolving issues.`,
   inputSchema: {
@@ -368,7 +374,13 @@ Each approach provides a structured method for identifying and resolving issues.
           "divide_conquer",
           "backtracking",
           "cause_elimination",
-          "program_slicing"
+          "program_slicing",
+          "log_analysis",
+          "static_analysis",
+          "root_cause_analysis",
+          "delta_debugging",
+          "fuzzing",
+          "incremental_testing"
         ]
       },
       issue: { type: "string" },
