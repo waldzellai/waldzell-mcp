@@ -2,7 +2,7 @@
  * Factory functions for MCP tool registration
  */
 
-// @ts-ignore - Import SDK
+// @ts-expect-error - Import SDK
 import { McpServer } from '@modelcontextprotocol/sdk';
 import { z } from 'zod';
 import { handleApiError } from './errors.js';
@@ -24,7 +24,7 @@ export interface CallToolResult {
  * @param handler Function to execute when tool is called
  */
 export function registerTool(
-  server: any, 
+  server: McpServer, 
   name: string, 
   description: string, 
   schema: z.ZodTypeAny, 
