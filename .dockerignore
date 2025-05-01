@@ -12,7 +12,10 @@ packages/*/
 !packages/server-glassbead-thinks/
 # --> Add includes for yelp-fusion build <--
 !packages/server-yelp-fusionai/
-!packages/common/
+# Explicitly include necessary common package files
+!packages/common/package.json
+!packages/common/tsconfig.json
+!packages/common/src/
 
 # Build artifacts
 dist/

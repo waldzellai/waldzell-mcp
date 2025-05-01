@@ -4,12 +4,17 @@ WORKDIR /app
 
 # Copy root lockfile and package.json (for workspace structure)
 COPY package.json yarn.lock ./
+# --> Add COPY for yarnrc.yml <--
+COPY .yarnrc.yml ./
 
 # Copy the specific package.json for this server
 COPY packages/server-yelp-fusionai/package.json ./packages/server-yelp-fusionai/
 
-# Copy the common package dependency
-COPY packages/common ./packages/common
+# Copy the common package components needed for build
+# Instead of copying the whole directory, copy specific necessary files
+COPY packages/common/package.json ./packages/common/
+COPY packages/common/tsconfig.json ./packages/common/
+COPY packages/common/src ./packages/common/src
 
 # Copy root tsconfig (needed for extends)
 COPY tsconfig.json ./
@@ -22,7 +27,6 @@ RUN corepack enable
 
 # Install dependencies using Yarn workspaces
 # This should install dependencies for all workspaces defined in the root package.json
-# --immutable removed temporarily for debugging lockfile issues
 RUN yarn install
 
 # Copy source files for this specific package
@@ -31,6 +35,8 @@ COPY packages/server-yelp-fusionai/src ./packages/server-yelp-fusionai/src
 # Build the package (using the script from package.json)
 # Ensure the build command is run in the context of the specific package
 RUN cd packages/server-yelp-fusionai && yarn run build
+# --> Add debug ls <--
+RUN ls -la /app/packages/server-yelp-fusionai
 
 # Use a smaller image for production
 FROM node:18-slim
