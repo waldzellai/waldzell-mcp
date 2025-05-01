@@ -39,6 +39,9 @@ dotenv.config();
 const YELP_API_BASE_URL = 'https://api.yelp.com/v3';
 const YELP_API_KEY = process.env.YELP_API_KEY;
 
+// --> Add Logging <--
+console.log(`[DEBUG] YELP_API_KEY check in toolsets/index.ts: ${YELP_API_KEY ? 'Found' : 'MISSING!'}`);
+
 // Check if API key is available
 if (!YELP_API_KEY) {
   console.warn('YELP_API_KEY environment variable is not set. API calls will likely fail.');

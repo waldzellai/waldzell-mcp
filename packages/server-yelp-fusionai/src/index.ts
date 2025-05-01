@@ -107,7 +107,9 @@ export function createServer(options: {
   const disabledToolsets = options.disabledToolsets || [];
   
   // Initialize all toolsets
+  console.log('[DEBUG] >>> Calling initializeToolsets...');
   initializeToolsets(enableDynamicToolsets);
+  console.log('[DEBUG] <<< Finished initializeToolsets.');
   
   // If specific toolsets are disabled, set their state
   if (disabledToolsets.length > 0) {
@@ -125,7 +127,9 @@ export function createServer(options: {
   }
   
   // Register all tools from enabled toolsets
+  console.log('[DEBUG] >>> Calling registerAllToolsets...');
   registerAllToolsets(server);
+  console.log('[DEBUG] <<< Finished registerAllToolsets.');
 
   return server;
 }

@@ -186,11 +186,15 @@ export function registerAllToolsets(server: any, readOnlyMode = false): void {
   // Get all enabled toolsets
   const enabledToolsets = Object.values(toolsetRegistry).filter(toolset => toolset.enabled);
   
+  console.log(`[DEBUG] registerAllToolsets: Found ${enabledToolsets.length} enabled toolsets to register.`);
+  
   // Prepare tools capabilities object
   const toolsCapabilities: Record<string, any> = {};
   
   // Collect all tools from enabled toolsets
   for (const toolset of enabledToolsets) {
+    console.log(`[DEBUG] registerAllToolsets: Attempting to register toolset '${toolset.id}'`);
+    
     // In readOnlyMode, only register read-only tools
     const toolsToRegister = readOnlyMode
       ? toolset.readTools

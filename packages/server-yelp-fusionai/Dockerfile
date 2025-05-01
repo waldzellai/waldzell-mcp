@@ -2,20 +2,35 @@ FROM node:18-slim AS builder
 
 WORKDIR /app
 
-# Copy package files first for better layer caching
-# We need both the package's package.json and the root yarn.lock
-# Assuming yarn.lock is copied into the context (e.g., manually before build)
+# Copy root lockfile and package.json (for workspace structure)
 COPY package.json yarn.lock ./
 
-# Install dependencies using Yarn
-RUN yarn install --frozen-lockfile
+# Copy the specific package.json for this server
+COPY packages/server-yelp-fusionai/package.json ./packages/server-yelp-fusionai/
 
-# Copy source files (relative to local context)
+# Copy the common package dependency
+COPY packages/common ./packages/common
+
+# Copy root tsconfig (needed for extends)
 COPY tsconfig.json ./
-COPY src ./src
+
+# Copy the specific tsconfig.json for this server
+COPY packages/server-yelp-fusionai/tsconfig.json ./packages/server-yelp-fusionai/
+
+# --> Enable Corepack
+RUN corepack enable
+
+# Install dependencies using Yarn workspaces
+# This should install dependencies for all workspaces defined in the root package.json
+# --immutable removed temporarily for debugging lockfile issues
+RUN yarn install
+
+# Copy source files for this specific package
+COPY packages/server-yelp-fusionai/src ./packages/server-yelp-fusionai/src
 
 # Build the package (using the script from package.json)
-RUN yarn run build
+# Ensure the build command is run in the context of the specific package
+RUN cd packages/server-yelp-fusionai && yarn run build
 
 # Use a smaller image for production
 FROM node:18-slim
@@ -24,11 +39,16 @@ WORKDIR /app
 
 # Copy necessary files from the builder stage
 # package.json and yarn.lock were copied to builder's /app
-COPY --from=builder /app/package.json /app/yarn.lock ./
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/server-yelp-fusionai/package.json ./
+COPY --from=builder /app/packages/server-yelp-fusionai/dist ./dist
+
+# Copy necessary files from common package if needed at runtime (adjust path as necessary)
+# Example: COPY --from=builder /app/packages/common/dist ./common/dist
 
 # Install production dependencies only using Yarn
-RUN yarn install --production --frozen-lockfile
+# Keep --immutable here for the production stage
+RUN yarn install --production --immutable
 
 # Command to run the application
 CMD ["node", "dist/index.js"]

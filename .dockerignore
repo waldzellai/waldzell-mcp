@@ -10,6 +10,9 @@ memory-bank/
 # Other packages in monorepo
 packages/*/
 !packages/server-glassbead-thinks/
+# --> Add includes for yelp-fusion build <--
+!packages/server-yelp-fusionai/
+!packages/common/
 
 # Build artifacts
 dist/

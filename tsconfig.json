@@ -22,7 +22,7 @@
   ],
   "references": [
     { "path": "./packages/common" },
-    { "path": "./packages/yelp-fusionai-mcp" },
+    { "path": "./packages/server-yelp-fusionai" },
     { "path": "./packages/server-stochasticthinking" },
     { "path": "./packages/server-clear-thought" },
     { "path": "./packages/server-google-styleguide" }

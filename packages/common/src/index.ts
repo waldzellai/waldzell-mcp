@@ -1,4 +1,4 @@
-dimport { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 
 // Mental Model Types
 export interface MentalModelData {
