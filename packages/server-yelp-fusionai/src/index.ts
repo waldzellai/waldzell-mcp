@@ -10,7 +10,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 
 // Import toolsets
 import { initializeToolsets } from './toolsets/index.js';
-import { registerAllToolsets } from './utils/toolsets.js';
+import { registerAllToolsets, getToolset, setToolsetEnabled } from './utils/toolsets.js';
 
 /**
  * Helper function to start the MCP server on a specific port
@@ -113,7 +113,6 @@ export function createServer(options: {
   
   // If specific toolsets are disabled, set their state
   if (disabledToolsets.length > 0) {
-    const { getToolset, setToolsetEnabled } = require('./utils/toolsets.js');
     for (const toolsetId of disabledToolsets) {
       try {
         const toolset = getToolset(toolsetId);

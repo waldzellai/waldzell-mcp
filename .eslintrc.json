@@ -9,7 +9,11 @@
   "parserOptions": {
     "ecmaVersion": 2020,
     "sourceType": "module",
-    "project": "./tsconfig.json"
+    "project": [
+      "./tsconfig.json",
+      "./packages/*/tsconfig.json" 
+    ],
+    "tsconfigRootDir": "."
   },
   "rules": {
     "@typescript-eslint/explicit-function-return-type": "off",
