@@ -186,11 +186,15 @@ export function registerAllToolsets(server: any, readOnlyMode = false): void {
   // Get all enabled toolsets
   const enabledToolsets = Object.values(toolsetRegistry).filter(toolset => toolset.enabled);
   
+  console.log(`[DEBUG] registerAllToolsets: Found ${enabledToolsets.length} enabled toolsets to register.`);
+  
   // Prepare tools capabilities object
   const toolsCapabilities: Record<string, any> = {};
   
   // Collect all tools from enabled toolsets
   for (const toolset of enabledToolsets) {
+    console.log(`[DEBUG] registerAllToolsets: Attempting to register toolset '${toolset.id}'`);
+    
     // In readOnlyMode, only register read-only tools
     const toolsToRegister = readOnlyMode
       ? toolset.readTools
@@ -203,6 +207,7 @@ export function registerAllToolsets(server: any, readOnlyMode = false): void {
       }
       
       // Add tool to capabilities
+      console.log(`[DEBUG] Adding tool to capabilities: ${tool.name}`);
       toolsCapabilities[tool.name] = {
         description: tool.description,
         schema: tool.schema,
@@ -225,10 +230,15 @@ export function registerAllToolsets(server: any, readOnlyMode = false): void {
     }
   }
   
+  // Log the final object before registration
+  console.log('[DEBUG] Final toolsCapabilities to register:', JSON.stringify(Object.keys(toolsCapabilities)));
+  
   // Register all tools at once using registerCapabilities
   server.registerCapabilities({
     tools: toolsCapabilities
   });
+  
+  console.log('[DEBUG] server.registerCapabilities called successfully.');
 }
 
 /**
