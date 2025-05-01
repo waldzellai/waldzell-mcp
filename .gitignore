@@ -40,3 +40,6 @@ yarn-error.log*
 *.sln
 *.sw?
 .DS_Store
+
+styleguide
+**/.claude/settings.local.json

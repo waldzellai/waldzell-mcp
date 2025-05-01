@@ -1,25 +1,30 @@
 {
   "compilerOptions": {
     "target": "es2020",
-    "module": "commonjs",
+    "module": "esnext",
     "moduleResolution": "node",
-    "types": ["node", "jest"],
+    "types": ["node"],
     "outDir": "./dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "strict": false,
+    "strict": true,
     "skipLibCheck": true,
     "declaration": true,
     "sourceMap": true,
     "rootDir": "./src",
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "allowJs": true,
-    "noFallthroughCasesInSwitch": false,
-    "noImplicitReturns": false,
-    "noImplicitThis": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noErrorTruncation": true,
+    "skipDefaultLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "ignoreDeprecations": "5.0",
+    "resolveJsonModule": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "src/__mocks__/**/*"]
+  "exclude": ["node_modules", "dist"]
 }

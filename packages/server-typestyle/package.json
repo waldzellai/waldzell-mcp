@@ -1,6 +1,6 @@
 {
     "name": "@waldzellai/server-typestyle",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "MCP server for providing Google Style Guide advice for TypeScript code",
     "license": "MIT",
     "author": "Waldzell AI",
