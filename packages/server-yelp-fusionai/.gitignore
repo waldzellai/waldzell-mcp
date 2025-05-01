@@ -51,3 +51,6 @@ create-template.sh
 # Documentation and supporting files
 **/*/Fusion AI (Search & Chat)/*.html
 **/*/*.html
+
+packages/server-yelp-fusionai/llms.txt
+llms.txt

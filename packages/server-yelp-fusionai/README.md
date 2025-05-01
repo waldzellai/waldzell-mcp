@@ -13,7 +13,6 @@ Simply ask Claude questions like:
 - "Tell me about the reviews for Gary Danko restaurant"
 - "Are there any free events in New York this weekend?"
 
-
 ## Features
 
 - **Natural Language Interface** - Ask Claude about businesses and get intelligent responses
@@ -32,6 +31,23 @@ Simply ask Claude questions like:
 ```bash
 npm install server-yelp-fusionai
 ```
+
+## Getting a Yelp API Key
+
+Before setting up the server, you'll need to obtain API credentials from Yelp:
+
+1. **Create a Yelp Developer Account**:
+   - Visit the [Yelp Fusion API](https://www.yelp.com/developers/v3/manage_app) page
+   - Sign up for an account or log in if you already have one
+
+2. **Create a New App**:
+   - Click on "Create New App" in the API dashboard
+   - Fill in the application details (name, industry, contact information)
+   - Agree to the Terms of Service and submit
+
+3. **Get Your API Key**:
+   - Once your app is created, you'll receive an API Key (Client ID is optional for most operations)
+   - Keep this key secure and never expose it in client-side code
 
 ## Setting Up with Claude Desktop
 
@@ -54,7 +70,7 @@ npm install server-yelp-fusionai
 3. **Create a `.env` File** with your Yelp API credentials:
    ```
    YELP_API_KEY=your_api_key_here
-   YELP_CLIENT_ID=your_client_id_here
+   YELP_CLIENT_ID=your_client_id_here  # Optional for most operations
    ```
 
 4. **Run the Server**:
@@ -106,8 +122,11 @@ npm install server-yelp-fusionai
 ```javascript
 const { createServer } = require('server-yelp-fusionai');
 
-// Create a server without starting it
-const server = createServer();
+// Create a server with custom options
+const server = createServer({
+  enableDynamicToolsets: true,  // Enable or disable dynamic toolset discovery
+  disabledToolsets: ['advertising', 'waitlist']  // Disable specific toolsets
+});
 
 // Add your own custom middleware or configuration
 // ...
@@ -118,13 +137,45 @@ server.listen(3000, () => {
 });
 ```
 
+### Command Line Options
+
+When running the server directly, you can use these command-line options:
+
+```bash
+# Enable dynamic toolset discovery (default)
+node yelp-server.js --enable-dynamic-toolsets
+
+# Disable dynamic toolset discovery
+node yelp-server.js --disable-dynamic-toolsets
+
+# Disable specific toolsets
+node yelp-server.js --disabled-toolsets advertising,waitlist
+
+# Show help message
+node yelp-server.js --help
+```
+
+### Environment Variables
+
+You can also configure the server using environment variables:
+
+```
+# Required
+YELP_API_KEY=your_api_key_here
+
+# Optional
+YELP_CLIENT_ID=your_client_id_here
+YELP_ENABLE_DYNAMIC_TOOLSETS=false
+YELP_DISABLED_TOOLSETS=advertising,waitlist
+```
+
 ### API Reference
 
 The MCP server exposes several tools for interacting with the Yelp Fusion API:
 
 #### Primary Search Tools
 
-1. **yelpQuery**  
+1. **yelpQuery**
    Natural language search using Yelp's AI API
    ```json
    {
@@ -132,7 +183,7 @@ The MCP server exposes several tools for interacting with the Yelp Fusion API:
    }
    ```
 
-2. **yelpBusinessSearch**  
+2. **yelpBusinessSearch**
    Parameter-based business search
    ```json
    {
@@ -143,7 +194,7 @@ The MCP server exposes several tools for interacting with the Yelp Fusion API:
    }
    ```
 
-3. **yelpBusinessDetails**  
+3. **yelpBusinessDetails**
    Get detailed information about a specific business
    ```json
    {
@@ -152,6 +203,29 @@ The MCP server exposes several tools for interacting with the Yelp Fusion API:
    ```
 
 See the [full API documentation](https://github.com/waldzellai/waldzell-mcp/tree/main/packages/server-yelp-fusionai#api) for details on all available tools and their parameters.
+
+## Troubleshooting
+
+### API Key Issues
+
+- **Error: "Yelp API key is not configured"**
+  Ensure your `.env` file contains the `YELP_API_KEY` variable and is in the same directory as your server script.
+
+- **Error: "Authentication failed: Invalid API key"**
+  Verify your API key is correct and hasn't expired. You can check it in the [Yelp Developer Dashboard](https://www.yelp.com/developers/v3/manage_app).
+
+### Connection Issues
+
+- **Claude can't connect to the server**
+  Ensure the server is running and the URL in Claude Desktop is correct (`http://localhost:3000/mcp`).
+
+- **Request timed out**
+  The Yelp API might be experiencing high traffic. Try again later or check your network connection.
+
+### Toolset Issues
+
+- **Missing functionality**
+  If certain tools aren't available, check if you've disabled the corresponding toolset. Use `--enable-dynamic-toolsets` to ensure all toolsets are loaded.
 
 ## Development
 
@@ -169,7 +243,7 @@ npm run build
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
