@@ -931,7 +931,7 @@ You should:
 // --- BEGIN ADDED TOOL DEFINITIONS ---
 
 const COLLABORATIVE_REASONING_TOOL: Tool = {
-  name: "collaborativeReasoning",
+  name: "collaborativereasoning",
   description: `A detailed tool for simulating expert collaboration with diverse perspectives.
 This tool helps models tackle complex problems by coordinating multiple viewpoints.
 It provides a framework for structured collaborative reasoning and perspective integration.`,
@@ -1026,7 +1026,7 @@ It provides a framework for structured collaborative reasoning and perspective i
 };
 
 const DECISION_FRAMEWORK_TOOL: Tool = {
-  name: "decisionFramework",
+  name: "decisionframework",
   description: `A detailed tool for structured decision analysis and rational choice.
 This tool helps models systematically evaluate options, criteria, and outcomes.
 It supports multiple decision frameworks, probability estimates, and value judgments.`,
@@ -1120,7 +1120,7 @@ It supports multiple decision frameworks, probability estimates, and value judgm
 };
 
 const METACOGNITIVE_MONITORING_TOOL: Tool = {
-  name: "metacognitiveMonitoring",
+  name: "metacognitivemonitoring",
   description: `A detailed tool for systematic self-monitoring of knowledge and reasoning quality.
 This tool helps models track knowledge boundaries, claim certainty, and reasoning biases.
 It provides a framework for metacognitive assessment across various domains and reasoning tasks.`,
@@ -1186,7 +1186,7 @@ It provides a framework for metacognitive assessment across various domains and 
 };
 
 const SCIENTIFIC_METHOD_TOOL: Tool = {
-  name: "scientificMethod",
+  name: "scientificmethod",
   description: `A detailed tool for applying formal scientific reasoning to questions and problems.
 This tool guides models through the scientific method with structured hypothesis testing.
 It enforces explicit variable identification, prediction making, and evidence evaluation.`,
@@ -1262,7 +1262,7 @@ It enforces explicit variable identification, prediction making, and evidence ev
 };
 
 const STRUCTURED_ARGUMENTATION_TOOL: Tool = {
-  name: "structuredArgumentation",
+  name: "structuredargumentation",
   description: `A detailed tool for systematic dialectical reasoning and argument analysis.
 This tool helps analyze complex questions through formal argumentation structures.
 It facilitates the creation, critique, and synthesis of competing arguments.`,
@@ -1292,7 +1292,7 @@ It facilitates the creation, critique, and synthesis of competing arguments.`,
 };
 
 const VISUAL_REASONING_TOOL: Tool = {
-  name: "visualReasoning",
+  name: "visualreasoning",
   description: `A tool for visual thinking, problem-solving, and communication.
 This tool enables models to create, manipulate, and interpret diagrams, graphs, and other visual representations.
 It supports various visual elements and operations to facilitate insight generation and hypothesis testing.`,
