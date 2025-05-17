@@ -1383,56 +1383,50 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   switch (request.params.name) {
     case "sequentialthinking": {
       const result = thinkingServer.processThought(request.params.arguments);
-      return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
-      };
+      return result;
     }
     case "mentalmodel": {
       const result = modelServer.processModel(request.params.arguments);
-      return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
-      };
+      return result;
     }
     case "debuggingapproach": {
       const result = debuggingServer.processApproach(request.params.arguments);
-      return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
-      };
+      return result;
     }
     case "collaborativereasoning": {
       const result = collaborativeReasoningServer.processCollaborativeReasoning(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "decisionframework": {
       const result = decisionFrameworkServer.processDecisionFramework(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "metacognitivemonitoring": {
       const result = metacognitiveMonitoringServer.processMetacognitiveMonitoring(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "scientificmethod": {
       const result = scientificMethodServer.processScientificMethod(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "structuredargumentation": {
       const result = argumentationServer.processStructuredArgumentation(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "visualreasoning": {
       const result = visualReasoningServer.processVisualReasoning(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     default:
