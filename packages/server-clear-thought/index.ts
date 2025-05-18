@@ -1346,7 +1346,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  function fetch(server: { process: (args: unknown) => unknown, name?: string }, args: unknown) {
+  async function fetch(server: { process: (args: unknown) => unknown, name?: string }, args: unknown) {
     const result = server.process(args);
     if (result instanceof Error) {
       throw new McpError(
@@ -1362,31 +1362,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (request.params.name) {
       case "sequentialthinking": {
-        return fetch(thinkingServer, request.params.arguments);
+        return await fetch(thinkingServer, request.params.arguments);
       }
       case "mentalmodel": {
-        return fetch(modelServer, request.params.arguments);  
+        return await fetch(modelServer, request.params.arguments);  
       }
       case "debuggingapproach": {
-        return fetch(debuggingServer, request.params.arguments);
+        return await fetch(debuggingServer, request.params.arguments);
       }
       case "collaborativereasoning": {
-        return fetch(collaborativeReasoningServer, request.params.arguments);
+        return await fetch(collaborativeReasoningServer, request.params.arguments);
       }
       case "decisionframework": {
-        return fetch(decisionFrameworkServer, request.params.arguments);
+        return await fetch(decisionFrameworkServer, request.params.arguments);
       }
       case "metacognitivemonitoring": {
-        return fetch(metacognitiveMonitoringServer, request.params.arguments);
+        return await fetch(metacognitiveMonitoringServer, request.params.arguments);
       }
       case "scientificmethod": {
-        return fetch(scientificMethodServer, request.params.arguments);
+        return await fetch(scientificMethodServer, request.params.arguments);
       }
       case "structuredargumentation": {
-        return fetch(argumentationServer, request.params.arguments);
+        return await fetch(argumentationServer, request.params.arguments);
       }
       case "visualreasoning": {
-        return fetch(visualReasoningServer, request.params.arguments);
+        return await fetch(visualReasoningServer, request.params.arguments);
       }
       default:
         throw new McpError(
