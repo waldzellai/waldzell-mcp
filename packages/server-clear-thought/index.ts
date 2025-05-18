@@ -1391,7 +1391,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       default:
         throw new McpError(
           ErrorCode.MethodNotFound,
-          `Tool '${request.params.name}' not found.`
+          `Server '${request.params.name ?? "unknown"}' not found.`
         );
     }
   } catch (error) {
