@@ -1346,7 +1346,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const serverMap: Record<string, { process: (args: unknown) => unknown, name?: string }> = {
+   const serverMap: Record<string, { process: (args: unknown) => unknown, name?: string }> = {
     "sequentialthinking": thinkingServer,
     "mentalmodel": modelServer,
     "debuggingapproach": debuggingServer,
@@ -1372,16 +1372,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   try {
-    const server = serverMap[request.params.name];
+    const targetServer = serverMap[request.params.name];
     
-    if (!server) {
+    if (!targetServer) {
       throw new McpError(
         ErrorCode.MethodNotFound,
         `Server '${request.params.name ?? "unknown"}' not found.`
       );
     }
     
-    return await fetch(server, request.params.arguments);
+    return await fetch(targetServer, request.params.arguments);
   } catch (error) {
     return {
       content: [{ 
