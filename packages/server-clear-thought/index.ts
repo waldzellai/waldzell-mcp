@@ -296,6 +296,26 @@ interface VisualOperationData {
   nextOperationNeeded: boolean;
 }
 
+interface MentalModelResult extends MentalModelData {
+  status: string;
+  hasSteps: boolean;
+  hasConclusion: boolean;
+}
+
+interface ApproachResult extends DebuggingApproachData {
+  status: string;
+  hasSteps: boolean;
+  hasResolution: boolean;
+}
+
+interface ThoughtResult {
+  thoughtNumber: number;
+  totalThoughts: number;
+  nextThoughtNeeded: boolean;
+  branches: string[];
+  thoughtHistoryLength: number;
+}
+
 // --- END ADDED DATA INTERFACES --- 
 
 // Server Classes
@@ -338,35 +358,17 @@ ${steps.map(step => `│ • ${step.padEnd(border.length - 4)} │`).join('\n')}
 └${border}┘`;
   }
 
-  public processModel(input: unknown): { content: Array<{ type: string; text: string }>; isError?: boolean } {
-    try {
-      const validatedInput = this.validateModelData(input);
-      const formattedOutput = this.formatModelOutput(validatedInput);
-      console.error(formattedOutput);
+  public process(input: unknown): MentalModelResult {
+    const validatedInput = this.validateModelData(input);
+    const formattedOutput = this.formatModelOutput(validatedInput);
+    console.error(formattedOutput);
 
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            modelName: validatedInput.modelName,
-            status: 'success',
-            hasSteps: validatedInput.steps.length > 0,
-            hasConclusion: !!validatedInput.conclusion
-          }, null, 2)
-        }]
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            status: 'failed'
-          }, null, 2)
-        }],
-        isError: true
-      };
-    }
+    return {
+      ...validatedInput,
+      status: 'success',
+      hasSteps: validatedInput.steps.length > 0,
+      hasConclusion: !!validatedInput.conclusion
+    };
   }
 }
 
@@ -409,35 +411,17 @@ ${steps.map(step => `│ • ${step.padEnd(border.length - 4)} │`).join('\n')}
 └${border}┘`;
   }
 
-  public processApproach(input: unknown): { content: Array<{ type: string; text: string }>; isError?: boolean } {
-    try {
-      const validatedInput = this.validateApproachData(input);
-      const formattedOutput = this.formatApproachOutput(validatedInput);
-      console.error(formattedOutput);
+  public process(input: unknown): ApproachResult {
+    const validatedInput = this.validateApproachData(input);
+    const formattedOutput = this.formatApproachOutput(validatedInput);
+    console.error(formattedOutput);
 
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            approachName: validatedInput.approachName,
-            status: 'success',
-            hasSteps: validatedInput.steps.length > 0,
-            hasResolution: !!validatedInput.resolution
-          }, null, 2)
-        }]
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            status: 'failed'
-          }, null, 2)
-        }],
-        isError: true
-      };
-    }
+    return {
+      ...validatedInput,
+      status: 'success',
+      hasSteps: validatedInput.steps.length > 0,
+      hasResolution: !!validatedInput.resolution
+    };
   }
 }
 
@@ -502,50 +486,32 @@ class SequentialThinkingServer {
 └${border}┘`;
   }
 
-  public processThought(input: unknown): { content: Array<{ type: string; text: string }>; isError?: boolean } {
-    try {
-      const validatedInput = this.validateThoughtData(input);
+  public process(input: unknown): ThoughtResult {
+    const validatedInput = this.validateThoughtData(input);
 
-      if (validatedInput.thoughtNumber > validatedInput.totalThoughts) {
-        validatedInput.totalThoughts = validatedInput.thoughtNumber;
-      }
-
-      this.thoughtHistory.push(validatedInput);
-
-      if (validatedInput.branchFromThought && validatedInput.branchId) {
-        if (!this.branches[validatedInput.branchId]) {
-          this.branches[validatedInput.branchId] = [];
-        }
-        this.branches[validatedInput.branchId].push(validatedInput);
-      }
-
-      const formattedThought = this.formatThought(validatedInput);
-      console.error(formattedThought);
-
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            thoughtNumber: validatedInput.thoughtNumber,
-            totalThoughts: validatedInput.totalThoughts,
-            nextThoughtNeeded: validatedInput.nextThoughtNeeded,
-            branches: Object.keys(this.branches),
-            thoughtHistoryLength: this.thoughtHistory.length
-          }, null, 2)
-        }]
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            status: 'failed'
-          }, null, 2)
-        }],
-        isError: true
-      };
+    if (validatedInput.thoughtNumber > validatedInput.totalThoughts) {
+      validatedInput.totalThoughts = validatedInput.thoughtNumber;
     }
+
+    this.thoughtHistory.push(validatedInput);
+
+    if (validatedInput.branchFromThought && validatedInput.branchId) {
+      if (!this.branches[validatedInput.branchId]) {
+        this.branches[validatedInput.branchId] = [];
+      }
+      this.branches[validatedInput.branchId].push(validatedInput);
+    }
+
+    const formattedThought = this.formatThought(validatedInput);
+    console.error(formattedThought);
+
+    return {
+      thoughtNumber: validatedInput.thoughtNumber,
+      totalThoughts: validatedInput.totalThoughts,
+      nextThoughtNeeded: validatedInput.nextThoughtNeeded,
+      branches: Object.keys(this.branches),
+      thoughtHistoryLength: this.thoughtHistory.length
+    };
   }
 }
 
@@ -566,7 +532,7 @@ class CollaborativeReasoningServer {
     return data;
   }
 
-  processCollaborativeReasoning(input: unknown): CollaborativeReasoningData {
+  public process(input: unknown): CollaborativeReasoningData {
     const validatedData = this.validateInputData(input);
     return {
         ...validatedData,
@@ -594,7 +560,7 @@ class DecisionFrameworkServer {
     return data;
   }
 
-  processDecisionFramework(input: unknown): DecisionFrameworkData {
+  public process(input: unknown): DecisionFrameworkData {
     const validatedData = this.validateInputData(input);
     return {
         ...validatedData,
@@ -627,7 +593,7 @@ class MetacognitiveMonitoringServer {
     return data;
   }
 
-  processMetacognitiveMonitoring(input: unknown): MetacognitiveMonitoringData {
+  public process(input: unknown): MetacognitiveMonitoringData {
     const validatedData = this.validateInputData(input);
     return {
         ...validatedData,
@@ -654,7 +620,7 @@ class ScientificMethodServer {
     return data;
   }
 
-  processScientificMethod(input: unknown): ScientificInquiryData {
+  public process(input: unknown): ScientificInquiryData {
     const validatedData = this.validateInputData(input);
 
     // Process hypothesis
@@ -708,7 +674,7 @@ class StructuredArgumentationServer {
     return data;
   }
 
-  processStructuredArgumentation(input: unknown): ArgumentData {
+  public process(input: unknown): ArgumentData {
     const validatedData = this.validateInputData(input);
     return {
         ...validatedData,
@@ -736,7 +702,7 @@ class VisualReasoningServer {
     return data;
   }
 
-  processVisualReasoning(input: unknown): VisualOperationData {
+  public process(input: unknown): VisualOperationData {
     const validatedData = this.validateInputData(input);
     return {
         ...validatedData,
@@ -1380,60 +1346,64 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  switch (request.params.name) {
-    case "sequentialthinking": {
-      const result = thinkingServer.processThought(request.params.arguments);
-      return result;
-    }
-    case "mentalmodel": {
-      const result = modelServer.processModel(request.params.arguments);
-      return result;
-    }
-    case "debuggingapproach": {
-      const result = debuggingServer.processApproach(request.params.arguments);
-      return result;
-    }
-    case "collaborativereasoning": {
-      const result = collaborativeReasoningServer.processCollaborativeReasoning(request.params.arguments);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-      };
-    }
-    case "decisionframework": {
-      const result = decisionFrameworkServer.processDecisionFramework(request.params.arguments);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-      };
-    }
-    case "metacognitivemonitoring": {
-      const result = metacognitiveMonitoringServer.processMetacognitiveMonitoring(request.params.arguments);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-      };
-    }
-    case "scientificmethod": {
-      const result = scientificMethodServer.processScientificMethod(request.params.arguments);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-      };
-    }
-    case "structuredargumentation": {
-      const result = argumentationServer.processStructuredArgumentation(request.params.arguments);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-      };
-    }
-    case "visualreasoning": {
-      const result = visualReasoningServer.processVisualReasoning(request.params.arguments);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-      };
-    }
-    default:
+  function fetch(server: { process: (args: unknown) => unknown, name?: string }, args: unknown) {
+    const result = server.process(args);
+    if (result instanceof Error) {
       throw new McpError(
         ErrorCode.MethodNotFound,
-        `Tool '${request.params.name}' not found.`
+        `Server '${server.name ?? "unknown"}' not found.`
       );
+    } 
+    return {
+      content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+    };
+  } 
+
+  try {
+    switch (request.params.name) {
+      case "sequentialthinking": {
+        return fetch(thinkingServer, request.params.arguments);
+      }
+      case "mentalmodel": {
+        return fetch(modelServer, request.params.arguments);  
+      }
+      case "debuggingapproach": {
+        return fetch(debuggingServer, request.params.arguments);
+      }
+      case "collaborativereasoning": {
+        return fetch(collaborativeReasoningServer, request.params.arguments);
+      }
+      case "decisionframework": {
+        return fetch(decisionFrameworkServer, request.params.arguments);
+      }
+      case "metacognitivemonitoring": {
+        return fetch(metacognitiveMonitoringServer, request.params.arguments);
+      }
+      case "scientificmethod": {
+        return fetch(scientificMethodServer, request.params.arguments);
+      }
+      case "structuredargumentation": {
+        return fetch(argumentationServer, request.params.arguments);
+      }
+      case "visualreasoning": {
+        return fetch(visualReasoningServer, request.params.arguments);
+      }
+      default:
+        throw new McpError(
+          ErrorCode.MethodNotFound,
+          `Tool '${request.params.name}' not found.`
+        );
+    }
+  } catch (error) {
+    return {
+      content: [{ 
+        type: "text", 
+        text: JSON.stringify({
+          error: error instanceof Error ? error.message : String(error),
+          status: 'failed'
+        }, null, 2) 
+      }]
+    };
   }
 });
 
