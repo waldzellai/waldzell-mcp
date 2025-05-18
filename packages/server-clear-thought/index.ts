@@ -1346,6 +1346,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const serverMap: Record<string, { process: (args: unknown) => unknown, name?: string }> = {
+    "sequentialthinking": thinkingServer,
+    "mentalmodel": modelServer,
+    "debuggingapproach": debuggingServer,
+    "collaborativereasoning": collaborativeReasoningServer,
+    "decisionframework": decisionFrameworkServer,
+    "metacognitivemonitoring": metacognitiveMonitoringServer,
+    "scientificmethod": scientificMethodServer,
+    "structuredargumentation": argumentationServer,
+    "visualreasoning": visualReasoningServer
+  };
+
   async function fetch(server: { process: (args: unknown) => unknown, name?: string }, args: unknown) {
     const result = server.process(args);
     if (result instanceof Error) {
@@ -1357,43 +1369,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
     };
-  } 
+  }
 
   try {
-    switch (request.params.name) {
-      case "sequentialthinking": {
-        return await fetch(thinkingServer, request.params.arguments);
-      }
-      case "mentalmodel": {
-        return await fetch(modelServer, request.params.arguments);  
-      }
-      case "debuggingapproach": {
-        return await fetch(debuggingServer, request.params.arguments);
-      }
-      case "collaborativereasoning": {
-        return await fetch(collaborativeReasoningServer, request.params.arguments);
-      }
-      case "decisionframework": {
-        return await fetch(decisionFrameworkServer, request.params.arguments);
-      }
-      case "metacognitivemonitoring": {
-        return await fetch(metacognitiveMonitoringServer, request.params.arguments);
-      }
-      case "scientificmethod": {
-        return await fetch(scientificMethodServer, request.params.arguments);
-      }
-      case "structuredargumentation": {
-        return await fetch(argumentationServer, request.params.arguments);
-      }
-      case "visualreasoning": {
-        return await fetch(visualReasoningServer, request.params.arguments);
-      }
-      default:
-        throw new McpError(
-          ErrorCode.MethodNotFound,
-          `Server '${request.params.name ?? "unknown"}' not found.`
-        );
+    const server = serverMap[request.params.name];
+    
+    if (!server) {
+      throw new McpError(
+        ErrorCode.MethodNotFound,
+        `Server '${request.params.name ?? "unknown"}' not found.`
+      );
     }
+    
+    return await fetch(server, request.params.arguments);
   } catch (error) {
     return {
       content: [{ 
