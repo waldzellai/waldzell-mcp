@@ -11,6 +11,9 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 // Fixed chalk import for ESM
 import chalk from 'chalk';
+import { validateInput, ValidationError, ProcessResult } from "./src/utils/validation.js";
+import { ThoughtDataSchema, MentalModelSchema, DebuggingApproachSchema } from "./src/schemas/core.js";
+import { CollaborativeReasoningSchema } from "./src/schemas/collaborative.js";
 
 // Data Interfaces
 interface ThoughtData {
@@ -301,22 +304,7 @@ interface VisualOperationData {
 // Server Classes
 class MentalModelServer {
   private validateModelData(input: unknown): MentalModelData {
-    const data = input as Record<string, unknown>;
-    
-    if (!data.modelName || typeof data.modelName !== 'string') {
-      throw new Error('Invalid modelName: must be a string');
-    }
-    if (!data.problem || typeof data.problem !== 'string') {
-      throw new Error('Invalid problem: must be a string');
-    }
-    
-    return {
-      modelName: data.modelName,
-      problem: data.problem,
-      steps: Array.isArray(data.steps) ? data.steps.map(String) : [],
-      reasoning: typeof data.reasoning === 'string' ? data.reasoning : '',
-      conclusion: typeof data.conclusion === 'string' ? data.conclusion : ''
-    };
+    return validateInput(MentalModelSchema, input, 'MentalModel');
   }
 
   private formatModelOutput(modelData: MentalModelData): string {
@@ -338,7 +326,7 @@ ${steps.map(step => `│ • ${step.padEnd(border.length - 4)} │`).join('\n')}
 └${border}┘`;
   }
 
-  public processModel(input: unknown): { content: Array<{ type: string; text: string }>; isError?: boolean } {
+  public processModel(input: unknown): ProcessResult {
     try {
       const validatedInput = this.validateModelData(input);
       const formattedOutput = this.formatModelOutput(validatedInput);
@@ -356,38 +344,41 @@ ${steps.map(step => `│ • ${step.padEnd(border.length - 4)} │`).join('\n')}
         }]
       };
     } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  private handleError(error: unknown): ProcessResult {
+    if (error instanceof ValidationError) {
       return {
         content: [{
           type: "text",
           text: JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            status: 'failed'
+            error: error.message,
+            details: error.prettyError,
+            status: 'validation_failed'
           }, null, 2)
         }],
         isError: true
       };
     }
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          error: error instanceof Error ? error.message : 'Unknown error',
+          status: 'processing_failed'
+        }, null, 2)
+      }],
+      isError: true
+    };
   }
 }
 
 class DebuggingApproachServer {
   private validateApproachData(input: unknown): DebuggingApproachData {
-    const data = input as Record<string, unknown>;
-    
-    if (!data.approachName || typeof data.approachName !== 'string') {
-      throw new Error('Invalid approachName: must be a string');
-    }
-    if (!data.issue || typeof data.issue !== 'string') {
-      throw new Error('Invalid issue: must be a string');
-    }
-    
-    return {
-      approachName: data.approachName,
-      issue: data.issue,
-      steps: Array.isArray(data.steps) ? data.steps.map(String) : [],
-      findings: typeof data.findings === 'string' ? data.findings : '',
-      resolution: typeof data.resolution === 'string' ? data.resolution : ''
-    };
+    return validateInput(DebuggingApproachSchema, input, 'DebuggingApproach');
   }
 
   private formatApproachOutput(approachData: DebuggingApproachData): string {
@@ -409,7 +400,7 @@ ${steps.map(step => `│ • ${step.padEnd(border.length - 4)} │`).join('\n')}
 └${border}┘`;
   }
 
-  public processApproach(input: unknown): { content: Array<{ type: string; text: string }>; isError?: boolean } {
+  public processApproach(input: unknown): ProcessResult {
     try {
       const validatedInput = this.validateApproachData(input);
       const formattedOutput = this.formatApproachOutput(validatedInput);
@@ -427,51 +418,59 @@ ${steps.map(step => `│ • ${step.padEnd(border.length - 4)} │`).join('\n')}
         }]
       };
     } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  private handleError(error: unknown): ProcessResult {
+    if (error instanceof ValidationError) {
       return {
         content: [{
           type: "text",
           text: JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            status: 'failed'
+            error: error.message,
+            details: error.prettyError,
+            status: 'validation_failed'
           }, null, 2)
         }],
         isError: true
       };
     }
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          error: error instanceof Error ? error.message : 'Unknown error',
+          status: 'processing_failed'
+        }, null, 2)
+      }],
+      isError: true
+    };
   }
 }
 
 class SequentialThinkingServer {
+  private static readonly MAX_THOUGHT_HISTORY = 1000;
+  private static readonly MAX_BRANCH_SIZE = 100;
+  private static readonly MAX_BRANCHES = 50;
+  
   private thoughtHistory: ThoughtData[] = [];
   private branches: Record<string, ThoughtData[]> = {};
 
   private validateThoughtData(input: unknown): ThoughtData {
-    const data = input as Record<string, unknown>;
-
-    if (!data.thought || typeof data.thought !== 'string') {
-      throw new Error('Invalid thought: must be a string');
+    const validatedData = validateInput(ThoughtDataSchema, input, 'SequentialThinking');
+    
+    // Apply business logic validation
+    if (validatedData.isRevision && !validatedData.revisesThought) {
+      throw new Error("Revision must specify which thought is being revised");
     }
-    if (!data.thoughtNumber || typeof data.thoughtNumber !== 'number') {
-      throw new Error('Invalid thoughtNumber: must be a number');
+    
+    if (validatedData.branchFromThought && !validatedData.branchId) {
+      throw new Error("Branch must have a branch ID");
     }
-    if (!data.totalThoughts || typeof data.totalThoughts !== 'number') {
-      throw new Error('Invalid totalThoughts: must be a number');
-    }
-    if (typeof data.nextThoughtNeeded !== 'boolean') {
-      throw new Error('Invalid nextThoughtNeeded: must be a boolean');
-    }
-
-    return {
-      thought: data.thought,
-      thoughtNumber: data.thoughtNumber,
-      totalThoughts: data.totalThoughts,
-      nextThoughtNeeded: data.nextThoughtNeeded,
-      isRevision: data.isRevision as boolean | undefined,
-      revisesThought: data.revisesThought as number | undefined,
-      branchFromThought: data.branchFromThought as number | undefined,
-      branchId: data.branchId as string | undefined,
-      needsMoreThoughts: data.needsMoreThoughts as boolean | undefined,
-    };
+    
+    return validatedData;
   }
 
   private formatThought(thoughtData: ThoughtData): string {
@@ -502,7 +501,34 @@ class SequentialThinkingServer {
 └${border}┘`;
   }
 
-  public processThought(input: unknown): { content: Array<{ type: string; text: string }>; isError?: boolean } {
+  private cleanupMemory(): void {
+    // Clean up thought history if it exceeds limit
+    if (this.thoughtHistory.length > SequentialThinkingServer.MAX_THOUGHT_HISTORY) {
+      const excess = this.thoughtHistory.length - SequentialThinkingServer.MAX_THOUGHT_HISTORY;
+      this.thoughtHistory.splice(0, excess);
+    }
+
+    // Clean up branches if we have too many
+    const branchIds = Object.keys(this.branches);
+    if (branchIds.length > SequentialThinkingServer.MAX_BRANCHES) {
+      const excess = branchIds.length - SequentialThinkingServer.MAX_BRANCHES;
+      // Remove oldest branches (first in object)
+      for (let i = 0; i < excess; i++) {
+        delete this.branches[branchIds[i]];
+      }
+    }
+
+    // Clean up individual branches if they exceed size limit
+    for (const branchId in this.branches) {
+      const branch = this.branches[branchId];
+      if (branch.length > SequentialThinkingServer.MAX_BRANCH_SIZE) {
+        const excess = branch.length - SequentialThinkingServer.MAX_BRANCH_SIZE;
+        branch.splice(0, excess);
+      }
+    }
+  }
+
+  public processThought(input: unknown): ProcessResult {
     try {
       const validatedInput = this.validateThoughtData(input);
 
@@ -519,6 +545,9 @@ class SequentialThinkingServer {
         this.branches[validatedInput.branchId].push(validatedInput);
       }
 
+      // Clean up memory after adding new data
+      this.cleanupMemory();
+
       const formattedThought = this.formatThought(validatedInput);
       console.error(formattedThought);
 
@@ -530,22 +559,42 @@ class SequentialThinkingServer {
             totalThoughts: validatedInput.totalThoughts,
             nextThoughtNeeded: validatedInput.nextThoughtNeeded,
             branches: Object.keys(this.branches),
-            thoughtHistoryLength: this.thoughtHistory.length
+            thoughtHistoryLength: this.thoughtHistory.length,
+            status: 'success'
           }, null, 2)
         }]
       };
     } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  private handleError(error: unknown): ProcessResult {
+    if (error instanceof ValidationError) {
       return {
         content: [{
           type: "text",
           text: JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            status: 'failed'
+            error: error.message,
+            details: error.prettyError,
+            status: 'validation_failed'
           }, null, 2)
         }],
         isError: true
       };
     }
+
+    // Handle other errors (business logic, etc.)
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          error: error instanceof Error ? error.message : 'Unknown error',
+          status: 'processing_failed'
+        }, null, 2)
+      }],
+      isError: true
+    };
   }
 }
 
@@ -553,29 +602,11 @@ class SequentialThinkingServer {
 
 class CollaborativeReasoningServer {
   private validateInputData(input: unknown): CollaborativeReasoningData {
-    const data = input as CollaborativeReasoningData;
-    if (!data.topic || !data.personas || !data.contributions || !data.stage || !data.activePersonaId || !data.sessionId) {
-      throw new Error("Invalid input for CollaborativeReasoning: Missing required fields.");
-    }
-    if (typeof data.iteration !== 'number' || data.iteration < 0) {
-        throw new Error("Invalid iteration value for CollaborativeReasoningData.");
-    }
-    if (typeof data.nextContributionNeeded !== 'boolean') {
-        throw new Error("Invalid nextContributionNeeded value for CollaborativeReasoningData.");
-    }
-    return data;
+    return validateInput(CollaborativeReasoningSchema, input, 'CollaborativeReasoning');
   }
 
   processCollaborativeReasoning(input: unknown): CollaborativeReasoningData {
-    const validatedData = this.validateInputData(input);
-    return {
-        ...validatedData,
-        consensusPoints: validatedData.consensusPoints || [],
-        disagreements: validatedData.disagreements || [],
-        keyInsights: validatedData.keyInsights || [],
-        openQuestions: validatedData.openQuestions || [],
-        suggestedContributionTypes: validatedData.suggestedContributionTypes || [],
-    };
+    return this.validateInputData(input);
   }
 }
 
@@ -1443,10 +1474,50 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
+// Heartbeat functionality to prevent timeouts
+class HeartbeatManager {
+  private intervalId: NodeJS.Timeout | null = null;
+  private readonly HEARTBEAT_INTERVAL = 30000; // 30 seconds
+
+  start() {
+    if (this.intervalId) return; // Already running
+    
+    this.intervalId = setInterval(() => {
+      // Send heartbeat message to stderr (won't interfere with MCP protocol)
+      console.error(`[${new Date().toISOString()}] Heartbeat - Clear Thought MCP Server running`);
+    }, this.HEARTBEAT_INTERVAL);
+  }
+
+  stop() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+  }
+}
+
+const heartbeat = new HeartbeatManager();
+
 async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("Clear Thought MCP Server running on stdio");
+  
+  // Start heartbeat to prevent timeouts
+  heartbeat.start();
+  
+  // Graceful shutdown handling
+  process.on('SIGINT', () => {
+    console.error("Received SIGINT, shutting down gracefully...");
+    heartbeat.stop();
+    process.exit(0);
+  });
+  
+  process.on('SIGTERM', () => {
+    console.error("Received SIGTERM, shutting down gracefully...");
+    heartbeat.stop();
+    process.exit(0);
+  });
 }
 
 runServer().catch((error) => {
