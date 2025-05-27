@@ -13,6 +13,7 @@ A Model Context Protocol (MCP) server that provides systematic thinking, mental 
 - Rubber Duck Debugging
 - Pareto Principle
 - Occam's Razor
+- Inversion Thinking
 - And many more...
 
 ### Design Patterns
@@ -45,7 +46,21 @@ Note: Compatible with various modern web frameworks and architectures.
 - Backtracking
 - Cause Elimination
 - Program Slicing
+- Log Analysis
+- Static Analysis
+- Root Cause Analysis
+- Delta Debugging
+- Fuzzing
+- Incremental Testing
 - Advanced debugging patterns
+
+AI-optimized approaches:
+- Log Analysis: AI efficiently processes large volumes of logs to identify anomaly patterns
+- Static Analysis: AI examines code structure to identify potential issues
+- Root Cause Analysis: AI identifies underlying causes from vast amounts of data
+- Delta Debugging: AI systematically tests different versions to narrow down problem scope
+- Fuzzing: AI generates extensive test data to find edge case errors
+- Incremental Testing: AI systematically adds/removes code sections for testing
 
 ### Sequential Thinking
 - Structured thought process
@@ -95,6 +110,14 @@ Example scenarios:
 - Fixing production issues
 - Optimizing slow processes
 - Resolving integration problems
+
+AI-optimized approaches:
+- Log Analysis: AI efficiently processes large volumes of logs to identify anomaly patterns
+- Static Analysis: AI examines code structure to identify potential issues
+- Root Cause Analysis: AI identifies underlying causes from vast amounts of data
+- Delta Debugging: AI systematically tests different versions to narrow down problem scope
+- Fuzzing: AI generates extensive test data to find edge case errors
+- Incremental Testing: AI systematically adds/removes code sections for testing
 
 ### Sequential Thinking
 Best suited for:
@@ -157,6 +180,22 @@ const response = await mcp.callTool("debuggingapproach", {
     "Locate bottleneck",
     "Implement solution"
   ]
+});
+```
+
+```typescript
+// Using log analysis approach
+const response = await mcp.callTool("debuggingapproach", {
+  approachName: "log_analysis",
+  issue: "System fails intermittently with no obvious error messages",
+  steps: [
+    "Collect all system logs",
+    "Sort by timestamp", 
+    "Identify anomaly patterns around failure points",
+    "Analyze service interactions"
+  ],
+  findings: "Database connection timeout warnings detected before system failures",
+  resolution: "Increase database connection timeout values and implement retry mechanism"
 });
 ```
 

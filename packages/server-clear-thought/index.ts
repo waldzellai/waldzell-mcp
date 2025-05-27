@@ -789,6 +789,13 @@ Supports various mental models including:
 - Rubber Duck Debugging
 - Pareto Principle
 - Occam's Razor
+- Inversion Thinking
+- Iterative Thinking
+- Hypothesis-Driven Thinking
+- Multidisciplinary Thinking
+- Bayesian Reasoning
+- Critical Thinking
+- Systems Thinking
 
 Each model provides a systematic approach to breaking down and solving problems.`,
   inputSchema: {
@@ -802,7 +809,14 @@ Each model provides a systematic approach to breaking down and solving problems.
           "error_propagation",
           "rubber_duck",
           "pareto_principle",
-          "occams_razor"
+          "occams_razor",
+          "inversion_thinking",
+          "iterative_thinking",
+          "hypothesis_driven_thinking",
+          "multidisciplinary_thinking",
+          "bayesian_reasoning",
+          "critical_thinking",
+          "systems_thinking"
         ]
       },
       problem: { type: "string" },
@@ -827,6 +841,12 @@ Supports various debugging methods including:
 - Backtracking
 - Cause Elimination
 - Program Slicing
+- Log Analysis
+- Static Analysis
+- Root Cause Analysis
+- Delta Debugging
+- Fuzzing
+- Incremental Testing
 
 Each approach provides a structured method for identifying and resolving issues.`,
   inputSchema: {
@@ -840,7 +860,13 @@ Each approach provides a structured method for identifying and resolving issues.
           "divide_conquer",
           "backtracking",
           "cause_elimination",
-          "program_slicing"
+          "program_slicing",
+          "log_analysis",
+          "static_analysis",
+          "root_cause_analysis",
+          "delta_debugging",
+          "fuzzing",
+          "incremental_testing"
         ]
       },
       issue: { type: "string" },
