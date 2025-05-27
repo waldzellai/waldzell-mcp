@@ -1375,8 +1375,8 @@ const visualReasoningServer = new VisualReasoningServer();
 
 const server = new Server(
   {
-    name: "sequential-thinking-server",
-    version: "0.2.0",
+    name: "@waldzellai/clear-thought",
+    version: "0.0.4",
   },
   {
     capabilities: {
@@ -1415,55 +1415,55 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "sequentialthinking": {
       const result = thinkingServer.processThought(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "mentalmodel": {
       const result = modelServer.processModel(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "debuggingapproach": {
       const result = debuggingServer.processApproach(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "collaborativereasoning": {
       const result = collaborativeReasoningServer.processCollaborativeReasoning(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "decisionframework": {
       const result = decisionFrameworkServer.processDecisionFramework(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "metacognitivemonitoring": {
       const result = metacognitiveMonitoringServer.processMetacognitiveMonitoring(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "scientificmethod": {
       const result = scientificMethodServer.processScientificMethod(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "structuredargumentation": {
       const result = argumentationServer.processStructuredArgumentation(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     case "visualreasoning": {
       const result = visualReasoningServer.processVisualReasoning(request.params.arguments);
       return {
-        content: [{ type: "application/json", text: JSON.stringify(result, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
       };
     }
     default:
@@ -1477,7 +1477,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // Heartbeat functionality to prevent timeouts
 class HeartbeatManager {
   private intervalId: NodeJS.Timeout | null = null;
-  private readonly HEARTBEAT_INTERVAL = 30000; // 30 seconds
+  private readonly HEARTBEAT_INTERVAL = 60000; // 60 seconds (1 minute)
 
   start() {
     if (this.intervalId) return; // Already running
