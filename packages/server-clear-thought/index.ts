@@ -1004,7 +1004,7 @@ const visualReasoningServer = new VisualReasoningServer();
 const server = new Server(
   {
     name: "clear-thought",
-    version: "0.0.4",
+    version: "0.0.5",
   },
   {
     capabilities: {
