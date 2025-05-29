@@ -1,9 +1,9 @@
-import { z } from "zod/v4";
+import { z } from "zod";
 
 export class ValidationError extends Error {
   constructor(
     public context: string,
-    public zodError: z.core.$ZodError,
+    public zodError: z.ZodError,
     public prettyError: string
   ) {
     super(`Validation failed in ${context}: ${prettyError}`);
@@ -19,28 +19,24 @@ export function validateInput<T>(
   const result = schema.safeParse(input);
   
   if (!result.success) {
-    const prettyError = z.prettifyError(result.error);
+    const prettyError = result.error.issues
+      .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+      .join('; ');
     throw new ValidationError(context, result.error, prettyError);
   }
   
-  return result.data;
+  return result.data as T;
 }
 
 export function getFieldError(
-  error: z.core.$ZodError,
+  error: z.ZodError,
   fieldPath: string
 ): string | undefined {
-  const tree = z.treeifyError(error);
-  // Navigate tree structure to get specific field error
-  const pathParts = fieldPath.split('.');
-  let current: any = tree;
-  
-  for (const part of pathParts) {
-    if (!current?.properties?.[part]) return undefined;
-    current = current.properties[part];
-  }
-  
-  return current?.errors?.[0];
+  const pathArray = fieldPath.split('.');
+  const issue = error.issues.find(
+    issue => JSON.stringify(issue.path) === JSON.stringify(pathArray)
+  );
+  return issue?.message;
 }
 
 // Common result type for all server operations

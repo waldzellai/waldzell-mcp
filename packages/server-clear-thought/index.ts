@@ -419,7 +419,15 @@ class EnhancedTransport {
 // Server Classes with Enhanced Error Handling
 class MentalModelServer {
   private validateModelData(input: unknown): MentalModelData {
-    return validateInput(MentalModelSchema, input, 'MentalModel');
+    const validated = validateInput(MentalModelSchema, input, 'MentalModel');
+    // Ensure all required fields are present after validation
+    return {
+      modelName: validated.modelName,
+      problem: validated.problem,
+      steps: validated.steps || [],
+      reasoning: validated.reasoning || '',
+      conclusion: validated.conclusion || ''
+    };
   }
 
   private formatModelOutput(modelData: MentalModelData): string {
@@ -493,7 +501,15 @@ ${steps.map(step => `│ • ${step.padEnd(border.length - 4)} │`).join('\n')}
 
 class DebuggingApproachServer {
   private validateApproachData(input: unknown): DebuggingApproachData {
-    return validateInput(DebuggingApproachSchema, input, 'DebuggingApproach');
+    const validated = validateInput(DebuggingApproachSchema, input, 'DebuggingApproach');
+    // Ensure all required fields are present after validation
+    return {
+      approachName: validated.approachName,
+      issue: validated.issue,
+      steps: validated.steps || [],
+      findings: validated.findings || '',
+      resolution: validated.resolution || ''
+    };
   }
 
   private formatApproachOutput(approachData: DebuggingApproachData): string {
@@ -711,11 +727,54 @@ class SequentialThinkingServer {
 // Placeholder classes for other servers (keeping existing structure)
 class CollaborativeReasoningServer {
   private validateInputData(input: unknown): CollaborativeReasoningData {
-    return validateInput(CollaborativeReasoningSchema, input, 'CollaborativeReasoning');
+    const validated = validateInput(CollaborativeReasoningSchema, input, 'CollaborativeReasoning');
+    // Ensure all required fields are present, especially for nested objects
+    return {
+      ...validated,
+      personas: validated.personas.map(persona => ({
+        ...persona,
+        communication: {
+          style: persona.communication.style,
+          tone: persona.communication.tone
+        }
+      }))
+    } as CollaborativeReasoningData;
   }
 
-  processCollaborativeReasoning(input: unknown): CollaborativeReasoningData {
-    return this.validateInputData(input);
+  processCollaborativeReasoning(input: unknown): ProcessResult {
+    try {
+      const validatedInput = this.validateInputData(input);
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(validatedInput, null, 2)
+        }]
+      };
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              error: error.message,
+              details: error.prettyError,
+              status: 'validation_failed'
+            }, null, 2)
+          }],
+          isError: true
+        };
+      }
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            error: error instanceof Error ? error.message : 'Unknown error',
+            status: 'processing_failed'
+          }, null, 2)
+        }],
+        isError: true
+      };
+    }
   }
 }
 
@@ -725,8 +784,27 @@ class DecisionFrameworkServer {
     return input as DecisionFrameworkData;
   }
 
-  processDecisionFramework(input: unknown): DecisionFrameworkData {
-    return this.validateInputData(input);
+  processDecisionFramework(input: unknown): ProcessResult {
+    try {
+      const validatedInput = this.validateInputData(input);
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(validatedInput, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            error: error instanceof Error ? error.message : 'Unknown error',
+            status: 'processing_failed'
+          }, null, 2)
+        }],
+        isError: true
+      };
+    }
   }
 }
 
@@ -736,8 +814,27 @@ class MetacognitiveMonitoringServer {
     return input as MetacognitiveMonitoringData;
   }
 
-  processMetacognitiveMonitoring(input: unknown): MetacognitiveMonitoringData {
-    return this.validateInputData(input);
+  processMetacognitiveMonitoring(input: unknown): ProcessResult {
+    try {
+      const validatedInput = this.validateInputData(input);
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(validatedInput, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            error: error instanceof Error ? error.message : 'Unknown error',
+            status: 'processing_failed'
+          }, null, 2)
+        }],
+        isError: true
+      };
+    }
   }
 }
 
@@ -747,8 +844,27 @@ class ScientificMethodServer {
     return input as ScientificInquiryData;
   }
 
-  processScientificMethod(input: unknown): ScientificInquiryData {
-    return this.validateInputData(input);
+  processScientificMethod(input: unknown): ProcessResult {
+    try {
+      const validatedInput = this.validateInputData(input);
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(validatedInput, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            error: error instanceof Error ? error.message : 'Unknown error',
+            status: 'processing_failed'
+          }, null, 2)
+        }],
+        isError: true
+      };
+    }
   }
 }
 
@@ -758,8 +874,27 @@ class StructuredArgumentationServer {
     return input as ArgumentData;
   }
 
-  processStructuredArgumentation(input: unknown): ArgumentData {
-    return this.validateInputData(input);
+  processStructuredArgumentation(input: unknown): ProcessResult {
+    try {
+      const validatedInput = this.validateInputData(input);
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(validatedInput, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            error: error instanceof Error ? error.message : 'Unknown error',
+            status: 'processing_failed'
+          }, null, 2)
+        }],
+        isError: true
+      };
+    }
   }
 }
 
@@ -769,8 +904,27 @@ class VisualReasoningServer {
     return input as VisualOperationData;
   }
 
-  processVisualReasoning(input: unknown): VisualOperationData {
-    return this.validateInputData(input);
+  processVisualReasoning(input: unknown): ProcessResult {
+    try {
+      const validatedInput = this.validateInputData(input);
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(validatedInput, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            error: error instanceof Error ? error.message : 'Unknown error',
+            status: 'processing_failed'
+          }, null, 2)
+        }],
+        isError: true
+      };
+    }
   }
 }
 
@@ -1051,57 +1205,39 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (request.params.name) {
       case "sequentialthinking": {
         const result = thinkingServer.processThought(request.params.arguments);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-        };
+        return { content: result.content };
       }
       case "mentalmodel": {
         const result = modelServer.processModel(request.params.arguments);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-        };
+        return { content: result.content };
       }
       case "debuggingapproach": {
         const result = debuggingServer.processApproach(request.params.arguments);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-        };
+        return { content: result.content };
       }
       case "collaborativereasoning": {
         const result = collaborativeReasoningServer.processCollaborativeReasoning(request.params.arguments);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-        };
+        return { content: result.content };
       }
       case "decisionframework": {
         const result = decisionFrameworkServer.processDecisionFramework(request.params.arguments);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-        };
+        return { content: result.content };
       }
       case "metacognitivemonitoring": {
         const result = metacognitiveMonitoringServer.processMetacognitiveMonitoring(request.params.arguments);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-        };
+        return { content: result.content };
       }
       case "scientificmethod": {
         const result = scientificMethodServer.processScientificMethod(request.params.arguments);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-        };
+        return { content: result.content };
       }
       case "structuredargumentation": {
         const result = argumentationServer.processStructuredArgumentation(request.params.arguments);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-        };
+        return { content: result.content };
       }
       case "visualreasoning": {
         const result = visualReasoningServer.processVisualReasoning(request.params.arguments);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-        };
+        return { content: result.content };
       }
       default:
         throw new McpError(
