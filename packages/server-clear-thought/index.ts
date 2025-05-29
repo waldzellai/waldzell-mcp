@@ -1117,33 +1117,53 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Enhanced Heartbeat Manager with memory leak prevention
-class HeartbeatManager {
+// FIXED: Enhanced Protocol Keep-Alive Manager
+class ProtocolKeepAlive {
   private intervalId: NodeJS.Timeout | null = null;
-  private readonly HEARTBEAT_INTERVAL = 60000; // 60 seconds
+  private readonly KEEPALIVE_INTERVAL = 30000; // 30 seconds (half of typical 60s timeout)
   private isRunning = false;
+  private failedPings = 0;
+  private readonly MAX_FAILED_PINGS = 3;
+
+  constructor(private server: Server) {}
 
   start() {
     if (this.isRunning || this.intervalId) return;
     
     this.isRunning = true;
-    this.intervalId = setInterval(() => {
+    this.intervalId = setInterval(async () => {
       try {
-        console.error(`[${new Date().toISOString()}] Heartbeat - Clear Thought MCP Server running`);
+        // Send a protocol-level keep-alive by sending a logging message
+        // This ensures the MCP protocol sees activity
+        await this.server.sendLoggingMessage({
+          level: "debug",
+          data: `Keep-alive ping at ${new Date().toISOString()}`,
+          logger: "keepalive"
+        });
         
-        // Log memory usage for monitoring
-        if (process.memoryUsage) {
-          const memUsage = process.memoryUsage();
-          console.error(`[${new Date().toISOString()}] Memory: RSS=${Math.round(memUsage.rss / 1024 / 1024)}MB, Heap=${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`);
-        }
+        // Reset failed ping counter on success
+        this.failedPings = 0;
+        
+        // Also log to stderr for monitoring
+        console.error(`[${new Date().toISOString()}] Protocol keep-alive sent successfully`);
+        
       } catch (error) {
-        console.error('Error in heartbeat:', error);
+        this.failedPings++;
+        console.error(`[${new Date().toISOString()}] Protocol keep-alive failed (attempt ${this.failedPings}/${this.MAX_FAILED_PINGS}):`, error);
+        
+        // If we've failed too many times, the connection is likely dead
+        if (this.failedPings >= this.MAX_FAILED_PINGS) {
+          console.error(`[${new Date().toISOString()}] Too many failed keep-alives, connection may be dead`);
+          // Optionally trigger cleanup/restart here
+        }
       }
-    }, this.HEARTBEAT_INTERVAL);
+    }, this.KEEPALIVE_INTERVAL);
 
     // Register cleanup
     const resourceManager = ResourceManager.getInstance();
     resourceManager.register({ cleanup: () => this.stop() });
+    
+    console.error(`[${new Date().toISOString()}] Protocol keep-alive started (interval: ${this.KEEPALIVE_INTERVAL}ms)`);
   }
 
   stop() {
@@ -1152,13 +1172,14 @@ class HeartbeatManager {
       this.intervalId = null;
     }
     this.isRunning = false;
-    console.error(`[${new Date().toISOString()}] Heartbeat stopped`);
+    console.error(`[${new Date().toISOString()}] Protocol keep-alive stopped`);
   }
 }
 
-const heartbeat = new HeartbeatManager();
+// Create protocol keep-alive instance
+let protocolKeepAlive: ProtocolKeepAlive;
 
-// Enhanced server runner with comprehensive error handling and resource management
+// FIXED: Enhanced server runner with protocol keep-alive
 async function runServer() {
   const enhancedTransport = new EnhancedTransport();
   
@@ -1189,7 +1210,7 @@ async function runServer() {
     
     // Send initial logging message
     try {
-      server.sendLoggingMessage({
+      await server.sendLoggingMessage({
         level: "info",
         data: "Clear Thought MCP Server started successfully",
       });
@@ -1197,8 +1218,25 @@ async function runServer() {
       console.error('Error sending initial log message:', error);
     }
     
-    // Start heartbeat
-    heartbeat.start();
+    // FIXED: Start protocol-level keep-alive instead of just console heartbeat
+    protocolKeepAlive = new ProtocolKeepAlive(server);
+    protocolKeepAlive.start();
+    
+    // Also log memory usage periodically (but less frequently)
+    const memoryLogger = setInterval(() => {
+      try {
+        if (process.memoryUsage) {
+          const memUsage = process.memoryUsage();
+          console.error(`[${new Date().toISOString()}] Memory: RSS=${Math.round(memUsage.rss / 1024 / 1024)}MB, Heap=${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`);
+        }
+      } catch (error) {
+        console.error('Error logging memory:', error);
+      }
+    }, 120000); // Every 2 minutes
+    
+    // Register memory logger cleanup
+    const resourceManager = ResourceManager.getInstance();
+    resourceManager.register({ cleanup: () => clearInterval(memoryLogger) });
     
   } catch (error) {
     console.error(`[${new Date().toISOString()}] ❌ Failed to start server:`, error);
@@ -1212,8 +1250,10 @@ async function cleanup() {
   console.error(`[${new Date().toISOString()}] 🧹 Starting graceful shutdown...`);
   
   try {
-    // Stop heartbeat
-    heartbeat.stop();
+    // Stop protocol keep-alive
+    if (protocolKeepAlive) {
+      protocolKeepAlive.stop();
+    }
     
     // Cleanup all resources
     const resourceManager = ResourceManager.getInstance();
