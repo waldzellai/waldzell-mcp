@@ -41,6 +41,7 @@
         "zod": "^3.25.27"
     },
     "devDependencies": {
+        "@types/express": "^5.0.2",
         "@types/node": "^22",
         "@types/yargs": "^17.0.32",
         "typescript": "^5.3.3"

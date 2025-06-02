@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
@@ -8,7 +9,10 @@ import {
   Tool,
   McpError,
   ErrorCode,
+  isInitializeRequest,
 } from "@modelcontextprotocol/sdk/types.js";
+import express from "express";
+import { randomUUID } from "node:crypto";
 // Fixed chalk import for ESM
 import chalk from 'chalk';
 import { validateInput, ValidationError, ProcessResult } from "./src/utils/validation.js";
@@ -1257,7 +1261,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // FIXED: Enhanced Protocol Keep-Alive Manager
 class ProtocolKeepAlive {
   private intervalId: NodeJS.Timeout | null = null;
-  private readonly KEEPALIVE_INTERVAL = 30000; // 30 seconds (half of typical 60s timeout)
+  private readonly KEEPALIVE_INTERVAL = 20000; // 20 seconds (well under typical 30-60s timeouts)
   private isRunning = false;
   private failedPings = 0;
   private readonly MAX_FAILED_PINGS = 3;
