@@ -11,10 +11,8 @@ import {
   Tool,
   McpError,
   ErrorCode,
-  isInitializeRequest,
 } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
-import { randomUUID } from "node:crypto";
 // Fixed chalk import for ESM
 import chalk from 'chalk';
 import { validateInput, ValidationError, ProcessResult } from "./src/utils/validation.js";
@@ -349,11 +347,16 @@ class ResourceManager {
 
 // Transport Factory for creating different transport types
 class TransportFactory {
-  static createTransport(type: 'stdio' | 'http' = 'stdio', options?: { port?: number; path?: string }): StdioServerTransport | StreamableHTTPServerTransport {
+  static createTransport(type: 'stdio' | 'http' = 'http', options?: { port?: number; path?: string }): StdioServerTransport | StreamableHTTPServerTransport {
     let transport;
     
     switch (type) {
-      case 'http': {
+      case 'stdio': {
+        transport = new StdioServerTransport();
+        break;
+      }
+      case 'http':
+      default: {
         // Use type assertion to bypass TypeScript checking for the options
         // This allows us to pass the options directly to the constructor
         // without knowing the exact type structure
@@ -364,10 +367,6 @@ class TransportFactory {
         } as any);
         break;
       }
-      case 'stdio':
-      default:
-        transport = new StdioServerTransport();
-        break;
     }
     
     return transport;
@@ -1376,7 +1375,7 @@ let protocolKeepAlive: ProtocolKeepAlive;
 let httpServer: any = null;
 
 // Enhanced server runner with transport factory support
-async function runServer(transportType: 'stdio' | 'http' = 'stdio', options?: { port?: number; path?: string }) {
+async function runServer(transportType: 'stdio' | 'http' = 'http', options?: { port?: number; path?: string }) {
   const enhancedTransport = new EnhancedTransport();
   
   try {
@@ -1522,7 +1521,7 @@ async function main() {
       alias: 't',
       description: 'Transport type (stdio or http)',
       type: 'string',
-      default: 'stdio',
+      default: 'http',
       choices: ['stdio', 'http']
     })
     .option('port', {
