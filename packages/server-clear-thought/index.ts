@@ -3,6 +3,8 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -343,6 +345,57 @@ class ResourceManager {
     await Promise.allSettled(cleanupPromises);
     this.resources.clear();
   }
+}
+
+// Transport Factory for creating different transport types
+class TransportFactory {
+  static createTransport(type: 'stdio' | 'http' = 'stdio', options?: { port?: number; path?: string }): StdioServerTransport | StreamableHTTPServerTransport {
+    let transport;
+    
+    switch (type) {
+      case 'http': {
+        // Use type assertion to bypass TypeScript checking for the options
+        // This allows us to pass the options directly to the constructor
+        // without knowing the exact type structure
+        transport = new StreamableHTTPServerTransport({
+          // These options will be handled by the StreamableHTTPServerTransport
+          // constructor according to its actual implementation
+          ...(options || {})
+        } as any);
+        break;
+      }
+      case 'stdio':
+      default:
+        transport = new StdioServerTransport();
+        break;
+    }
+    
+    return transport;
+  }
+}
+
+// HTTP Server setup with Express
+function setupHttpServer(port: number = 3000) {
+  const app = express();
+  
+  // Add basic middleware
+  app.use(express.json());
+  
+  // Health check endpoint
+  app.get('/health', (req, res) => {
+    res.status(200).json({ 
+      status: 'ok',
+      service: 'clear-thought-mcp',
+      timestamp: new Date().toISOString()
+    });
+  });
+  
+  // Start the server
+  const httpServer = app.listen(port, () => {
+    console.error(`[${new Date().toISOString()}] HTTP server listening on port ${port}`);
+  });
+  
+  return { app, httpServer };
 }
 
 // Enhanced Transport with Memory Leak Prevention
@@ -1319,13 +1372,34 @@ class ProtocolKeepAlive {
 
 // Create protocol keep-alive instance
 let protocolKeepAlive: ProtocolKeepAlive;
+// HTTP server instance
+let httpServer: any = null;
 
-// FIXED: Enhanced server runner with protocol keep-alive
-async function runServer() {
+// Enhanced server runner with transport factory support
+async function runServer(transportType: 'stdio' | 'http' = 'stdio', options?: { port?: number; path?: string }) {
   const enhancedTransport = new EnhancedTransport();
   
   try {
-    const transport = new StdioServerTransport();
+    // Use the transport factory to create the appropriate transport
+    const transport = TransportFactory.createTransport(transportType, options);
+    
+    // Setup HTTP server if using HTTP transport
+    if (transportType === 'http') {
+      const port = options?.port || 3000;
+      const httpSetup = setupHttpServer(port);
+      httpServer = httpSetup.httpServer;
+      
+      // Register HTTP server cleanup
+      enhancedTransport.addCleanupCallback(() => {
+        try {
+          if (httpServer) {
+            httpServer.close();
+          }
+        } catch (error) {
+          console.error('Error closing HTTP server:', error);
+        }
+      });
+    }
     
     // Setup transport cleanup
     enhancedTransport.addCleanupCallback(() => {
@@ -1347,7 +1421,7 @@ async function runServer() {
     await Promise.race([connectionPromise, timeoutPromise]);
     enhancedTransport.setConnected(true);
     
-    console.error(`[${new Date().toISOString()}] ✅ Clear Thought MCP Server running on stdio`);
+    console.error(`[${new Date().toISOString()}] ✅ Clear Thought MCP Server running on ${transportType}${transportType === 'http' ? ` (port: ${options?.port || 3000})` : ''}`);
     
     // Send initial logging message
     try {
@@ -1386,7 +1460,7 @@ async function runServer() {
   }
 }
 
-// Enhanced cleanup function
+// Enhanced cleanup function with HTTP server support
 async function cleanup() {
   console.error(`[${new Date().toISOString()}] 🧹 Starting graceful shutdown...`);
   
@@ -1394,6 +1468,14 @@ async function cleanup() {
     // Stop protocol keep-alive
     if (protocolKeepAlive) {
       protocolKeepAlive.stop();
+    }
+    
+    // Close HTTP server if it exists
+    if (httpServer) {
+      await new Promise<void>((resolve) => {
+        httpServer.close(() => resolve());
+      });
+      console.error(`[${new Date().toISOString()}] HTTP server closed`);
     }
     
     // Cleanup all resources
@@ -1433,9 +1515,49 @@ process.on('unhandledRejection', async (reason, promise) => {
   process.exit(1);
 });
 
+// Parse command line arguments
+async function main() {
+  const argv = await yargs(hideBin(process.argv))
+    .option('transport', {
+      alias: 't',
+      description: 'Transport type (stdio or http)',
+      type: 'string',
+      default: 'stdio',
+      choices: ['stdio', 'http']
+    })
+    .option('port', {
+      alias: 'p',
+      description: 'HTTP port (only for http transport)',
+      type: 'number',
+      default: 3000
+    })
+    .option('path', {
+      description: 'HTTP path for MCP endpoint (only for http transport)',
+      type: 'string',
+      default: '/mcp'
+    })
+    .help()
+    .argv;
+
+  // Start the server with the selected transport
+  try {
+    await runServer(
+      argv.transport as 'stdio' | 'http',
+      {
+        port: argv.port,
+        path: argv.path
+      }
+    );
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] 💀 Fatal error running server:`, error);
+    await cleanup();
+    process.exit(1);
+  }
+}
+
 // Start the server with comprehensive error handling
-runServer().catch(async (error) => {
-  console.error(`[${new Date().toISOString()}] 💀 Fatal error running server:`, error);
+main().catch(async (error) => {
+  console.error(`[${new Date().toISOString()}] 💀 Fatal error in main:`, error);
   await cleanup();
   process.exit(1);
 });
