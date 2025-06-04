@@ -1,0 +1,53 @@
+# Source files
+src/
+*.ts
+!dist/**/*.d.ts
+
+# Configuration
+tsconfig.json
+.gitignore
+.npmignore
+
+# Development files
+.vscode/
+.idea/
+.claude/
+claude_code_mcp_config.json
+mcp_config_claude_code.json
+
+# Testing
+tests/
+coverage/
+.nyc_output/
+*.test.*
+*.spec.*
+
+# Documentation development
+specs/
+trees/
+
+# Build tools
+Dockerfile
+smithery.yaml
+flake.nix
+flake.lock
+
+# Backup files
+*.bak
+*.bak2
+index-old-bloated.ts
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
