@@ -14,31 +14,21 @@
     },
     "files": [
         "dist",
-        "src",
-        "smithery.yaml",
         "README.md",
         "LICENSE"
     ],
     "scripts": {
-        "build": "tsc -p tsconfig.build.json",
-        "build:smithery": "npx @smithery/cli build",
-        "test": "vitest",
-        "test:coverage": "vitest --coverage",
-        "clean": "rm -rf dist",
-        "typecheck": "tsc --noEmit",
-        "lint": "echo \"No linting configured\" && exit 0",
-        "docker:build": "docker build -t waldzellai/clear-thought .",
-        "docker:run": "docker run -p 3000:3000 waldzellai/clear-thought",
-        "dev": "tsx src/dev.ts",
-        "dev:http": "tsx src/server.ts",
-        "start": "node dist/server.js",
-        "start:dev": "tsx src/dev.ts",
-        "start:http": "node dist/server.js",
+        "build": "npx tsc --project tsconfig.json && chmod +x dist/*.js",
         "prepare": "npm run build",
         "watch": "npx tsc --watch",
+        "clean": "rm -rf dist",
         "prebuild": "npm run clean",
         "prepublishOnly": "npm run build",
-        "dev:watch": "npm run watch",
+        "start": "node dist/index.js",
+        "docker": "docker build -t waldzellai/clear-thought .",
+        "dev": "npm run watch",
+        "test": "echo \"No tests yet\" && exit 0",
+        "lint": "echo \"No linting configured\" && exit 0",
         "deploy": "smithery deploy"
     },
     "repository": {
@@ -47,22 +37,11 @@
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.5.0",
-        "@smithery/sdk": "^1.4.3",
-        "express": "^4.18.2",
-        "lodash": "^4.17.21",
-        "zod": "^3.25.27",
-        "zod-to-json-schema": "^3.22.4"
+        "zod": "^3.25.27"
     },
     "devDependencies": {
-        "@types/express": "^4.17.21",
-        "@types/lodash": "^4.14.202",
         "@types/node": "^22",
-        "@types/supertest": "^6.0.2",
-        "@vitest/coverage-v8": "^1.2.0",
-        "supertest": "^6.3.4",
-        "tsx": "^4.7.0",
-        "typescript": "^5.3.3",
-        "vitest": "^1.2.0"
+        "typescript": "^5.3.3"
     },
     "keywords": [
         "mcp",
@@ -76,20 +55,6 @@
     "engines": {
         "node": ">=18"
     },
-    "main": "./dist/index.js",
-    "module": "./src/index.ts",
-    "exports": {
-        ".": {
-            "import": "./dist/index.js",
-            "require": "./dist/index.js"
-        },
-        "./server": {
-            "import": "./dist/server.js",
-            "require": "./dist/server.js"
-        },
-        "./tools/*": {
-            "import": "./dist/tools/*.js",
-            "require": "./dist/tools/*.js"
-        }
-    }
+    "main": "index.js",
+    "module": "./index.ts"
 }
