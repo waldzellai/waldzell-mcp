@@ -30,6 +30,9 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+# Smithery
+.smithery/
+
 # Temporary files
 *.tmp
 *.temp
@@ -47,3 +50,4 @@ mcp_config_claude_code.json
 trees/
 specs/
 temp/
+references
