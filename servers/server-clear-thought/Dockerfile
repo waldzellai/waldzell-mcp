@@ -1,7 +1,7 @@
-FROM node:18-slim
+FROM node:18-alpine
 
 # Install curl for health check
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache curl
 
 # Create app directory
 WORKDIR /usr/src/app
@@ -42,6 +42,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 CMD ["node", "dist/server.js"]
 
 # Label the image
-LABEL org.opencontainers.image.source="https://github.com/waldzellai/clear-thought"
+LABEL org.opencontainers.image.source="https://github.com/waldzellai/waldzell-mcp/tree/main/servers/server-clear-thought"
 LABEL org.opencontainers.image.description="MCP server for systematic thinking, mental models, debugging approaches, and memory management"
 LABEL org.opencontainers.image.licenses="MIT"

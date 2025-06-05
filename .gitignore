@@ -45,3 +45,7 @@ styleguide
 **/.claude/settings.local.json
 claude_code_mcp_config.json
 .roomodes
+
+# Never commit these
+model-context-protocol-resources/
+references/
