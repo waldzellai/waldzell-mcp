@@ -1,0 +1,30 @@
+# Source files (we publish dist/)
+src/test/
+.gitignore
+.gitignore.d/
+
+# Development configs
+*.local.ts
+*.local.js
+tsconfig.json
+typestyle_mcp_config.ts
+
+# CI/CD
+.github/
+
+# Build artifacts
+*.tgz
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

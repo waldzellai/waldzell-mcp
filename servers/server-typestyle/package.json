@@ -1,0 +1,75 @@
+{
+    "name": "@waldzellai/server-typestyle",
+    "version": "0.1.2",
+    "description": "MCP server for providing Google Style Guide advice for TypeScript code",
+    "license": "MIT",
+    "author": "Waldzell AI",
+    "type": "module",
+    "bin": {
+        "mcp-server-typestyle": "dist/index.js"
+    },
+    "main": "dist/index.js",
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE",
+        "UPDATES.md",
+        "typestyle_mcp_config.template.ts",
+        "scripts/test-with-exa.sh",
+        "examples"
+    ],
+    "scripts": {
+        "build": "npx tsc --listFiles --project tsconfig.json && chmod +x dist/*.js",
+        "prepare": "npm run build",
+        "watch": "npx tsc --watch",
+        "clean": "rm -rf dist",
+        "prebuild": "npm run clean",
+        "prepublishOnly": "npm run build",
+        "start": "node dist/index.js",
+        "docker": "docker build -t waldzellai/server-typestyle .",
+        "dev": "npm run watch",
+        "test": "node dist/src/test/test-harness.js",
+        "test:watch": "npm run build && npm run test",
+        "test:integration": "node dist/src/test/integration-test.js",
+        "test:exa": "scripts/test-with-exa.sh",
+        "analyze-sample": "tsc examples/sample-analyzer.ts --outDir dist/examples --esModuleInterop --module NodeNext --moduleResolution NodeNext --target es2022 && node dist/examples/sample-analyzer.js",
+        "lint": "echo \"No linting configured\" && exit 0",
+        "validate": "node scripts/validate-package.js",
+        "prepare-publish": "scripts/prepare-publish.sh",
+        "publish-package": "npm publish --access public"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.5.0",
+        "chalk": "^5.3.0",
+        "node-fetch": "^3.3.2"
+    },
+    "devDependencies": {
+        "@types/node": "^22",
+        "@types/node-fetch": "^2.6.11",
+        "exa-mcp-server": "^0.1.1",
+        "typescript": "^5.3.3"
+    },
+    "keywords": [
+        "mcp",
+        "typescript",
+        "google-style-guide",
+        "style-formatting",
+        "code-styling",
+        "vertical-mcp",
+        "ai",
+        "perplexity",
+        "exa"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org/"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/waldzellai/mcp-servers.git",
+        "directory": "packages/server-typestyle"
+    }
+}
