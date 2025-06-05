@@ -43,3 +43,5 @@ yarn-error.log*
 
 styleguide
 **/.claude/settings.local.json
+claude_code_mcp_config.json
+.roomodes

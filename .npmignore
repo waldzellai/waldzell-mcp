@@ -45,6 +45,10 @@ create-template.sh
 llms.txt
 typescript-sdk/
 packages/
+claude_code_mcp_config.json
+.roomodes
+model-context-protocol-resources
+servers/server-yelp-fusionai/.env
 
 # Keep dist folder (override .gitignore)
 !dist/
