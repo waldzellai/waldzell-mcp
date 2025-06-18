@@ -1,0 +1,48 @@
+name: Collective Intelligence Telemetry
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:
+
+jobs:
+  telemetry:
+    runs-on: ubuntu-latest
+    if: hashFiles('collective-intelligence/enhanced-telemetry-collector.sh') != ''
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure Collective Intelligence
+        run: |
+          # Create .env file from secrets
+          cat > collective-intelligence/.env << EOL
+          SUPABASE_URL=${{ secrets.CI_SUPABASE_URL || vars.CI_SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.CI_SUPABASE_ANON_KEY || vars.CI_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY || vars.CI_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_PROJECT_REF=${{ secrets.CI_SUPABASE_PROJECT_REF || vars.CI_SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_URL=${{ secrets.CI_SUPABASE_DB_URL || vars.CI_SUPABASE_DB_URL }}
+          DATABASE_URL=${{ secrets.CI_DATABASE_URL || vars.CI_DATABASE_URL }}
+          DIRECT_URL=${{ secrets.CI_DIRECT_URL || vars.CI_DIRECT_URL }}
+          SUPABASE_FUNCTION_URL=${{ secrets.CI_SUPABASE_FUNCTION_URL || vars.CI_SUPABASE_FUNCTION_URL }}
+          TELEMETRY_ENABLED=true
+          GITHUB_REPOSITORY=${{ github.repository }}
+          EOL
+          
+          # Source telemetry
+          source collective-intelligence/enhanced-telemetry-collector.sh
+          
+          # Record workflow execution
+          record_api_call 0 "github-action" 1.0 0
+          echo "✅ Telemetry recorded for ${{ github.repository }}"
+      
+      - name: Run Scripts with Telemetry
+        run: |
+          # Example: Run any shell scripts with telemetry enabled
+          for script in $(find . -name "*.sh" -type f | head -5); do
+            echo "Running $script with telemetry..."
+            # Scripts will automatically use telemetry if they source the collector
+          done
