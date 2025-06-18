@@ -1,0 +1,228 @@
+name: Collective Intelligence Telemetry
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      debug_mode:
+        description: 'Enable debug mode'
+        required: false
+        default: 'false'
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+
+jobs:
+  telemetry:
+    runs-on: ubuntu-latest
+    name: Collect and Send Telemetry
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Check for Collective Intelligence
+        id: check_ci
+        run: |
+          if [ -d "collective-intelligence" ] && [ -f "collective-intelligence/enhanced-telemetry-collector.sh" ]; then
+            echo "has_ci=true" >> $GITHUB_OUTPUT
+            echo "✅ Collective Intelligence found"
+          else
+            echo "has_ci=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No Collective Intelligence in this repository"
+          fi
+      
+      - name: Setup Environment Variables
+        if: steps.check_ci.outputs.has_ci == 'true'
+        run: |
+          # Create .env file with available configuration
+          mkdir -p collective-intelligence
+          
+          # Use secrets if available, otherwise use defaults/variables
+          cat > collective-intelligence/.env << 'EOL'
+          # Supabase Configuration
+          SUPABASE_URL=${{ secrets.CI_SUPABASE_URL || vars.CI_SUPABASE_URL || 'https://vpdtevvxlvwuhdfuybgb.supabase.co' }}
+          SUPABASE_ANON_KEY=${{ secrets.CI_SUPABASE_ANON_KEY || vars.CI_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZHRldnZ4bHZ3dWhkZnV5YmdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1NDUwMzIsImV4cCI6MjA2NDEyMTAzMn0.WcZKv-lPXbxM-GeRE51qcrPZdnGzBNjNxoo3nOBT3VY' }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY || vars.CI_SUPABASE_SERVICE_ROLE_KEY || '' }}
+          SUPABASE_PROJECT_REF=${{ vars.CI_SUPABASE_PROJECT_REF || 'vpdtevvxlvwuhdfuybgb' }}
+          SUPABASE_DB_URL=${{ secrets.CI_SUPABASE_DB_URL || '' }}
+          DATABASE_URL=${{ secrets.CI_DATABASE_URL || '' }}
+          DIRECT_URL=${{ secrets.CI_DIRECT_URL || '' }}
+          SUPABASE_FUNCTION_URL=${{ vars.CI_SUPABASE_FUNCTION_URL || 'https://vpdtevvxlvwuhdfuybgb.functions.supabase.co/collective-intelligence' }}
+          
+          # Telemetry Configuration
+          TELEMETRY_ENABLED=true
+          TELEMETRY_LOG_LEVEL=${{ github.event.inputs.debug_mode == 'true' && 'DEBUG' || 'INFO' }}
+          TELEMETRY_BATCH_SIZE=10
+          TELEMETRY_FLUSH_INTERVAL=30
+          
+          # Repository Info
+          GITHUB_REPOSITORY=${{ github.repository }}
+          GITHUB_REF=${{ github.ref }}
+          GITHUB_SHA=${{ github.sha }}
+          GITHUB_WORKFLOW=${{ github.workflow }}
+          GITHUB_RUN_ID=${{ github.run_id }}
+          EOL
+          
+          echo "✅ Environment configured"
+          
+      - name: Validate Configuration
+        if: steps.check_ci.outputs.has_ci == 'true'
+        id: validate
+        run: |
+          source collective-intelligence/.env
+          
+          echo "🔍 Validating configuration..."
+          
+          # Check required variables
+          missing_vars=""
+          
+          if [ -z "$SUPABASE_URL" ]; then
+            missing_vars="$missing_vars SUPABASE_URL"
+          fi
+          
+          if [ -z "$SUPABASE_ANON_KEY" ]; then
+            missing_vars="$missing_vars SUPABASE_ANON_KEY"
+          fi
+          
+          if [ -n "$missing_vars" ]; then
+            echo "⚠️ Missing required variables:$missing_vars"
+            echo "config_valid=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Configuration valid"
+            echo "config_valid=true" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Test Supabase Connection
+        if: steps.check_ci.outputs.has_ci == 'true' && steps.validate.outputs.config_valid == 'true'
+        id: test_connection
+        run: |
+          source collective-intelligence/.env
+          
+          echo "🔗 Testing Supabase connection..."
+          
+          # Test API endpoint
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X GET "$SUPABASE_URL/rest/v1/" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          
+          if [ "$response" = "200" ]; then
+            echo "✅ Supabase connection successful"
+            echo "connection_ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Supabase connection failed (HTTP $response)"
+            echo "connection_ok=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Initialize Telemetry
+        if: steps.check_ci.outputs.has_ci == 'true' && steps.validate.outputs.config_valid == 'true'
+        id: init_telemetry
+        run: |
+          cd collective-intelligence
+          
+          echo "📊 Initializing telemetry..."
+          
+          # Source the telemetry collector
+          set +e  # Don't fail on errors
+          source enhanced-telemetry-collector.sh
+          telemetry_status=$?
+          set -e
+          
+          if [ $telemetry_status -eq 0 ]; then
+            echo "✅ Telemetry initialized"
+            echo "telemetry_ok=true" >> $GITHUB_OUTPUT
+            
+            # Record workflow execution
+            record_api_call 0 "github-action" 1.0 0 || true
+            
+            # Record workflow metadata
+            record_pattern "workflow_execution" "${{ github.workflow }}" 1 1.0 || true
+            
+            echo "📤 Telemetry data recorded"
+          else
+            echo "⚠️ Telemetry initialization failed"
+            echo "telemetry_ok=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Collect Repository Metrics
+        if: steps.check_ci.outputs.has_ci == 'true' && steps.init_telemetry.outputs.telemetry_ok == 'true'
+        run: |
+          cd collective-intelligence
+          source enhanced-telemetry-collector.sh
+          
+          echo "📈 Collecting repository metrics..."
+          
+          # Count scripts
+          script_count=$(find .. -name "*.sh" -type f | wc -l)
+          echo "Found $script_count shell scripts"
+          
+          # Record repository stats
+          record_pattern "repository_stats" "{\"scripts\": $script_count, \"event\": \"${{ github.event_name }}\"}" 1 0.8 || true
+          
+          # If this is a push event, record commit info
+          if [ "${{ github.event_name }}" = "push" ]; then
+            record_discovery "commit_activity" "{\"sha\": \"${{ github.sha }}\", \"ref\": \"${{ github.ref }}\"}" 0.7 0.5 || true
+          fi
+          
+      - name: Run Sample Scripts with Telemetry
+        if: steps.check_ci.outputs.has_ci == 'true' && steps.init_telemetry.outputs.telemetry_ok == 'true'
+        continue-on-error: true
+        run: |
+          cd collective-intelligence
+          
+          echo "🏃 Running sample scripts with telemetry..."
+          
+          # Find and run a few scripts as examples
+          sample_scripts=$(find .. -name "*.sh" -type f -not -path "../collective-intelligence/*" | head -3)
+          
+          if [ -n "$sample_scripts" ]; then
+            for script in $sample_scripts; do
+              echo "Testing telemetry with: $script"
+              
+              # Just source the script in a subshell to test telemetry
+              (
+                source enhanced-telemetry-collector.sh
+                export COLLECTIVE_SCRIPT_NAME=$(basename "$script")
+                # Don't actually run the script, just record its existence
+                record_pattern "script_inventory" "$COLLECTIVE_SCRIPT_NAME" 1 0.5 || true
+              )
+            done
+          fi
+          
+      - name: Generate Telemetry Report
+        if: always() && steps.check_ci.outputs.has_ci == 'true'
+        run: |
+          echo "📊 Telemetry Report for ${{ github.repository }}"
+          echo "============================================"
+          echo ""
+          echo "Configuration Status:"
+          echo "- Collective Intelligence: ${{ steps.check_ci.outputs.has_ci == 'true' && '✅ Found' || '❌ Not Found' }}"
+          echo "- Configuration Valid: ${{ steps.validate.outputs.config_valid == 'true' && '✅ Yes' || '❌ No' }}"
+          echo "- Supabase Connection: ${{ steps.test_connection.outputs.connection_ok == 'true' && '✅ OK' || '❌ Failed' }}"
+          echo "- Telemetry Active: ${{ steps.init_telemetry.outputs.telemetry_ok == 'true' && '✅ Yes' || '❌ No' }}"
+          echo ""
+          echo "Workflow Info:"
+          echo "- Event: ${{ github.event_name }}"
+          echo "- Branch: ${{ github.ref }}"
+          echo "- SHA: ${{ github.sha }}"
+          echo "- Run ID: ${{ github.run_id }}"
+          echo ""
+          
+          if [ "${{ github.event.inputs.debug_mode }}" = "true" ]; then
+            echo "Debug Information:"
+            echo "- SUPABASE_URL: ${SUPABASE_URL:-not set}"
+            echo "- Has ANON_KEY: ${SUPABASE_ANON_KEY:+yes}"
+            echo "- Has SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:+yes}"
+          fi
+          
+      - name: Upload Debug Logs
+        if: failure() || github.event.inputs.debug_mode == 'true'
+        uses: actions/upload-artifact@v3
+        with:
+          name: telemetry-debug-logs
+          path: |
+            collective-intelligence/.env
+            collective-intelligence/*.log
+          retention-days: 7
