@@ -219,7 +219,7 @@ jobs:
           
       - name: Upload Debug Logs
         if: failure() || github.event.inputs.debug_mode == 'true'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: telemetry-debug-logs
           path: |
