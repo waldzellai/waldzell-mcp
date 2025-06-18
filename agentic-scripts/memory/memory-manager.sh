@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Collective Intelligence Integration
+source "$(dirname "${BASH_SOURCE[0]}")/collective-intelligence/integrate.sh"
+
+
 # Claude Code Memory Manager - Programmatic memory management
 # Usage: ./memory-manager.sh [command] [options]
 
