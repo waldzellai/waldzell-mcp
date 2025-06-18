@@ -40,29 +40,29 @@ jobs:
           mkdir -p collective-intelligence
           
           # Use secrets if available, otherwise use defaults/variables
-          cat > collective-intelligence/.env << 'EOL'
+          cat > collective-intelligence/.env << EOL
           # Supabase Configuration
-          SUPABASE_URL=${{ secrets.CI_SUPABASE_URL || vars.CI_SUPABASE_URL || 'https://vpdtevvxlvwuhdfuybgb.supabase.co' }}
-          SUPABASE_ANON_KEY=${{ secrets.CI_SUPABASE_ANON_KEY || vars.CI_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZHRldnZ4bHZ3dWhkZnV5YmdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1NDUwMzIsImV4cCI6MjA2NDEyMTAzMn0.WcZKv-lPXbxM-GeRE51qcrPZdnGzBNjNxoo3nOBT3VY' }}
-          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY || vars.CI_SUPABASE_SERVICE_ROLE_KEY || '' }}
-          SUPABASE_PROJECT_REF=${{ vars.CI_SUPABASE_PROJECT_REF || 'vpdtevvxlvwuhdfuybgb' }}
-          SUPABASE_DB_URL=${{ secrets.CI_SUPABASE_DB_URL || '' }}
-          DATABASE_URL=${{ secrets.CI_DATABASE_URL || '' }}
-          DIRECT_URL=${{ secrets.CI_DIRECT_URL || '' }}
-          SUPABASE_FUNCTION_URL=${{ vars.CI_SUPABASE_FUNCTION_URL || 'https://vpdtevvxlvwuhdfuybgb.functions.supabase.co/collective-intelligence' }}
+          SUPABASE_URL="${{ secrets.CI_SUPABASE_URL || vars.CI_SUPABASE_URL || 'https://vpdtevvxlvwuhdfuybgb.supabase.co' }}"
+          SUPABASE_ANON_KEY="${{ secrets.CI_SUPABASE_ANON_KEY || vars.CI_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwZHRldnZ4bHZ3dWhkZnV5YmdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1NDUwMzIsImV4cCI6MjA2NDEyMTAzMn0.WcZKv-lPXbxM-GeRE51qcrPZdnGzBNjNxoo3nOBT3VY' }}"
+          SUPABASE_SERVICE_ROLE_KEY="${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY || vars.CI_SUPABASE_SERVICE_ROLE_KEY || '' }}"
+          SUPABASE_PROJECT_REF="${{ vars.CI_SUPABASE_PROJECT_REF || 'vpdtevvxlvwuhdfuybgb' }}"
+          SUPABASE_DB_URL="${{ secrets.CI_SUPABASE_DB_URL || '' }}"
+          DATABASE_URL="${{ secrets.CI_DATABASE_URL || '' }}"
+          DIRECT_URL="${{ secrets.CI_DIRECT_URL || '' }}"
+          SUPABASE_FUNCTION_URL="${{ vars.CI_SUPABASE_FUNCTION_URL || 'https://vpdtevvxlvwuhdfuybgb.functions.supabase.co/collective-intelligence' }}"
           
           # Telemetry Configuration
-          TELEMETRY_ENABLED=true
-          TELEMETRY_LOG_LEVEL=${{ github.event.inputs.debug_mode == 'true' && 'DEBUG' || 'INFO' }}
-          TELEMETRY_BATCH_SIZE=10
-          TELEMETRY_FLUSH_INTERVAL=30
+          TELEMETRY_ENABLED="true"
+          TELEMETRY_LOG_LEVEL="${{ github.event.inputs.debug_mode == 'true' && 'DEBUG' || 'INFO' }}"
+          TELEMETRY_BATCH_SIZE="10"
+          TELEMETRY_FLUSH_INTERVAL="30"
           
           # Repository Info
-          GITHUB_REPOSITORY=${{ github.repository }}
-          GITHUB_REF=${{ github.ref }}
-          GITHUB_SHA=${{ github.sha }}
-          GITHUB_WORKFLOW=${{ github.workflow }}
-          GITHUB_RUN_ID=${{ github.run_id }}
+          GITHUB_REPOSITORY="${{ github.repository }}"
+          GITHUB_REF="${{ github.ref }}"
+          GITHUB_SHA="${{ github.sha }}"
+          GITHUB_WORKFLOW="${{ github.workflow }}"
+          GITHUB_RUN_ID="${{ github.run_id }}"
           EOL
           
           echo "✅ Environment configured"
