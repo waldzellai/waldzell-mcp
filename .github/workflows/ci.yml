@@ -39,8 +39,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-yarn-
       
-    - name: Install dependencies
-      run: yarn install --mode=update-lockfile
+      - name: Install dependencies
+        run: yarn install --immutable
     
     - name: Build
       run: yarn build

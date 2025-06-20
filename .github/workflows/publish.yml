@@ -54,7 +54,7 @@ jobs:
             ${{ runner.os }}-yarn-
       
       - name: Install Dependencies
-        run: yarn install --mode=update-lockfile
+        run: yarn install --immutable
       
       - name: Run tests
         run: yarn test
