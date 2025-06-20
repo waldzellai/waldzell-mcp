@@ -12,18 +12,15 @@
     "declaration": true,
     "resolveJsonModule": true
   },
-  "include": [
-    "index.ts"
-  ],
+  "include": [],
   "exclude": [
     "node_modules",
     "dist"
   ],
   "references": [
-    { "path": "./packages/common" },
-    { "path": "./packages/server-yelp-fusionai" },
-    { "path": "./packages/server-stochasticthinking" },
-    { "path": "./packages/server-clear-thought" },
-    { "path": "./packages/server-google-styleguide" }
+    { "path": "./servers/server-stochasticthinking" },
+    { "path": "./servers/server-clear-thought" },
+    { "path": "./servers/server-google-styleguide" },
+    { "path": "./servers/server-typestyle" }
   ]
 }
