@@ -6,18 +6,15 @@
     "servers/*"
   ],
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "clean": "turbo run clean",
-    "test": "turbo run test",
+    "build": "npm run build --workspaces",
+    "watch": "npm run watch --workspaces",
+    "test": "npm test --workspaces",
     "docker": "npm run docker --workspace @waldzellai/clear-thought",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "smithery:yelp-fusion": "cd packages/server-yelp-fusionai && smithery deploy",
-    "smithery:stochastic": "cd packages/server-stochasticthinking && smithery deploy",
-    "smithery:clear-thought": "cd packages/server-clear-thought && smithery deploy",
-    "deploy": "turbo run deploy",
-    "publish-packages": "turbo run build lint test && changeset publish"
+    "smithery:yelp-fusion": "cd servers/server-yelp-fusionai && smithery deploy",
+    "smithery:stochastic": "cd servers/server-stochasticthinking && smithery deploy",
+    "smithery:clear-thought": "cd servers/server-clear-thought && smithery deploy",
+    "publish-packages": "npm run build --workspaces && changeset publish"
   },
   "author": "waldzellai",
   "license": "MIT",
@@ -32,7 +29,6 @@
     "@changesets/cli": "^2.26.2",
     "@types/node": "^22.13.4",
     "prettier": "^3.1.0",
-    "turbo": "^1.10.16",
     "typescript": "^5.7.3"
   },
   "dependencies": {
