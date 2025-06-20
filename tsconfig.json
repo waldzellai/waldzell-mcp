@@ -9,6 +9,20 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
+
   "include": ["servers/**/*"],
   "exclude": ["node_modules"]
+=======
+  "include": [],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+  "references": [
+    { "path": "./servers/server-stochasticthinking" },
+    { "path": "./servers/server-clear-thought" },
+    { "path": "./servers/server-google-styleguide" },
+    { "path": "./servers/server-typestyle" }
+  ]
+
 }
