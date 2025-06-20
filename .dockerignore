@@ -8,14 +8,9 @@ memory-bank/
 .DS_Store
 
 # Other packages in monorepo
-packages/*/
-!packages/server-glassbead-thinks/
-# --> Add includes for yelp-fusion build <--
-!packages/server-yelp-fusionai/
-# Explicitly include necessary common package files
-!packages/common/package.json
-!packages/common/tsconfig.json
-!packages/common/src/
+servers/*/
+!servers/server-glassbead-thinks/
+!servers/server-yelp-fusionai/
 
 # Build artifacts
 dist/
@@ -48,19 +43,19 @@ CHANGELOG.md
 !index.ts
 
 # Keep server package files
-!packages/server-glassbead-thinks/package.json
-!packages/server-glassbead-thinks/package-lock.json
-!packages/server-glassbead-thinks/tsconfig.json
-!packages/server-glassbead-thinks/LICENSE
-!packages/server-glassbead-thinks/README.md
-!packages/server-glassbead-thinks/src/
-!packages/server-glassbead-thinks/index.ts
+!servers/server-glassbead-thinks/package.json
+!servers/server-glassbead-thinks/package-lock.json
+!servers/server-glassbead-thinks/tsconfig.json
+!servers/server-glassbead-thinks/LICENSE
+!servers/server-glassbead-thinks/README.md
+!servers/server-glassbead-thinks/src/
+!servers/server-glassbead-thinks/index.ts
 
-!packages/server-clear-thought/
-!packages/server-clear-thought/package.json
-!packages/server-clear-thought/package-lock.json
-!packages/server-clear-thought/tsconfig.json
-!packages/server-clear-thought/LICENSE
-!packages/server-clear-thought/README.md
-!packages/server-clear-thought/src/
-!packages/server-clear-thought/index.ts
+!servers/server-clear-thought/
+!servers/server-clear-thought/package.json
+!servers/server-clear-thought/package-lock.json
+!servers/server-clear-thought/tsconfig.json
+!servers/server-clear-thought/LICENSE
+!servers/server-clear-thought/README.md
+!servers/server-clear-thought/src/
+!servers/server-clear-thought/index.ts
