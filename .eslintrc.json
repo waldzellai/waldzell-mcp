@@ -11,7 +11,7 @@
     "sourceType": "module",
     "project": [
       "./tsconfig.json",
-      "./packages/*/tsconfig.json" 
+      "./servers/*/tsconfig.json"
     ],
     "tsconfigRootDir": "."
   },
