@@ -1,0 +1,23 @@
+{
+  "name": "@waldzellai/yelp-fusionai",
+  "version": "0.1.0",
+  "description": "Minimal MCP server for the Yelp Fusion API",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "mcp-server-yelp-fusionai": "dist/index.js"
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.5.0",
+    "axios": "^1.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5.7.3"
+  }
+}
