@@ -4,9 +4,9 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'packages/*/smithery.yaml'
-      - 'packages/*/src/**'
-      - 'packages/*/Dockerfile'
+      - 'servers/*/smithery.yaml'
+      - 'servers/*/src/**'
+      - 'servers/*/Dockerfile'
   workflow_dispatch:
     inputs:
       package:
@@ -62,14 +62,14 @@ jobs:
     - name: Deploy specified package (manual trigger)
       if: github.event_name == 'workflow_dispatch'
       run: |
-        cd packages/${{ github.event.inputs.package }}
+        cd servers/${{ github.event.inputs.package }}
         smithery deploy
     
     - name: Deploy changed packages (auto trigger)
       if: github.event_name == 'push'
       run: |
         # Get list of changed packages
-        CHANGED_PACKAGES=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep -o "packages/[^/]*" | sort | uniq)
+        CHANGED_PACKAGES=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep -o "servers/[^/]*" | sort | uniq)
         
         for package in $CHANGED_PACKAGES; do
           # Check if smithery.yaml exists
