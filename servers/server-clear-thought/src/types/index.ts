@@ -58,8 +58,10 @@ export interface MentalModelData {
  */
 export interface DebuggingApproachData {
   /** The debugging approach being used */
-  approachName: 'binary_search' | 'reverse_engineering' | 'divide_conquer' | 
-                'backtracking' | 'cause_elimination' | 'program_slicing';
+  approachName: 'binary_search' | 'reverse_engineering' | 'divide_conquer' |
+                'backtracking' | 'cause_elimination' | 'program_slicing' |
+                'log_analysis' | 'static_analysis' | 'root_cause_analysis' |
+                'delta_debugging' | 'fuzzing' | 'incremental_testing';
   /** Description of the issue being debugged */
   issue: string;
   /** Steps taken during debugging */

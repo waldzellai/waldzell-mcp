@@ -7,6 +7,7 @@ A Model Context Protocol (MCP) server that provides systematic thinking, mental 
 ## Features
 
 ### Mental Models
+
 - First Principles Thinking
 - Opportunity Cost Analysis
 - Error Propagation Understanding
@@ -16,6 +17,7 @@ A Model Context Protocol (MCP) server that provides systematic thinking, mental 
 - And many more...
 
 ### Design Patterns
+
 - Modular Architecture
 - API Integration Patterns
 - State Management
@@ -27,6 +29,7 @@ A Model Context Protocol (MCP) server that provides systematic thinking, mental 
 Note: Compatible with various modern web frameworks and architectures.
 
 ### Programming Paradigms
+
 - Imperative Programming
 - Procedural Programming
 - Object-Oriented Programming
@@ -39,6 +42,7 @@ Note: Compatible with various modern web frameworks and architectures.
 - Reactive Programming
 
 ### Debugging Approaches
+
 - Binary Search
 - Reverse Engineering
 - Divide and Conquer
@@ -46,8 +50,15 @@ Note: Compatible with various modern web frameworks and architectures.
 - Cause Elimination
 - Program Slicing
 - Advanced debugging patterns
+- Log Analysis
+- Static Analysis
+- Root Cause Analysis
+- Delta Debugging
+- Fuzzing
+- Incremental Testing
 
 ### Sequential Thinking
+
 - Structured thought process
 - Revision and branching support
 - Progress tracking
@@ -58,7 +69,9 @@ Note: Compatible with various modern web frameworks and architectures.
 Each tool in the Clear Thought MCP Server has specific strengths. Here are some scenarios where each tool might be particularly useful:
 
 ### Mental Models
+
 Best suited for:
+
 - Initial problem understanding
 - Breaking down complex systems
 - Analyzing trade-offs
@@ -66,12 +79,15 @@ Best suited for:
 - Making strategic decisions
 
 Example scenarios:
+
 - Analyzing system architecture choices
 - Evaluating competing solutions
 - Understanding error patterns
 
 ### Design Patterns
+
 Best suited for:
+
 - Implementing proven solutions
 - Structuring new features
 - Ensuring maintainable code
@@ -79,12 +95,15 @@ Best suited for:
 - Managing technical debt
 
 Example scenarios:
+
 - Building new system components
 - Refactoring existing code
 - Implementing cross-cutting concerns
 
 ### Debugging Approaches
+
 Best suited for:
+
 - Troubleshooting issues
 - Performance optimization
 - System analysis
@@ -92,12 +111,15 @@ Best suited for:
 - Quality assurance
 
 Example scenarios:
+
 - Fixing production issues
 - Optimizing slow processes
 - Resolving integration problems
 
 ### Sequential Thinking
+
 Best suited for:
+
 - Complex problem-solving
 - Multi-step analysis
 - Decision refinement
@@ -105,6 +127,7 @@ Best suited for:
 - Comprehensive planning
 
 Example scenarios:
+
 - Planning major features
 - Analyzing system-wide changes
 - Making architectural decisions
@@ -122,6 +145,7 @@ npx -y @smithery/cli install @waldzellai/clear-thought --client claude
 ```
 
 ### Manual Installation
+
 ```bash
 npm install @waldzellai/clear-thought
 ```
@@ -135,38 +159,35 @@ npx @waldzellai/clear-thought
 ## Usage
 
 ### Mental Models
+
 ```typescript
-const response = await mcp.callTool("mentalmodel", {
-  modelName: "first_principles",
-  problem: "How to implement a new feature?",
-  steps: [
-    "Break down the problem",
-    "Analyze components",
-    "Build solution"
-  ]
+const response = await mcp.callTool('mentalmodel', {
+  modelName: 'first_principles',
+  problem: 'How to implement a new feature?',
+  steps: ['Break down the problem', 'Analyze components', 'Build solution'],
 });
 ```
 
 ### Debugging Approaches
+
 ```typescript
-const response = await mcp.callTool("debuggingapproach", {
-  approachName: "binary_search",
-  issue: "Performance degradation in the system",
-  steps: [
-    "Identify performance metrics",
-    "Locate bottleneck",
-    "Implement solution"
-  ]
+const response = await mcp.callTool('debuggingapproach', {
+  approachName: 'binary_search',
+  issue: 'Performance degradation in the system',
+  steps: ['Identify performance metrics', 'Locate bottleneck', 'Implement solution'],
+  findings: 'Database connections spiking during peak hours',
+  resolution: 'Optimized connection pooling',
 });
 ```
 
 ### Sequential Thinking
+
 ```typescript
-const response = await mcp.callTool("sequentialthinking", {
-  thought: "Initial analysis of the problem",
+const response = await mcp.callTool('sequentialthinking', {
+  thought: 'Initial analysis of the problem',
   thoughtNumber: 1,
   totalThoughts: 3,
-  nextThoughtNeeded: true
+  nextThoughtNeeded: true,
 });
 ```
 
