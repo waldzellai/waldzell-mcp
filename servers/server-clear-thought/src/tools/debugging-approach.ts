@@ -8,16 +8,31 @@ export function registerDebuggingApproach(server: McpServer, sessionState: Sessi
     'debuggingapproach',
     'Apply systematic debugging approaches to identify and resolve issues',
     {
-      approachName: z.enum(['binary_search', 'reverse_engineering', 'divide_conquer', 'backtracking', 'cause_elimination', 'program_slicing']).describe('Debugging approach'),
+      approachName: z.enum([
+        'binary_search',
+        'reverse_engineering',
+        'divide_conquer',
+        'backtracking',
+        'cause_elimination',
+        'program_slicing',
+        'log_analysis',
+        'static_analysis',
+        'root_cause_analysis',
+        'delta_debugging',
+        'fuzzing',
+        'incremental_testing'
+      ]).describe('Debugging approach'),
+      issue: z.string().describe('Description of the issue being debugged'),
       steps: z.array(z.string()).describe('Steps taken to debug'),
+      findings: z.string().describe('Findings discovered during debugging'),
       resolution: z.string().describe('How the issue was resolved')
     },
     async (args) => {
       const debugData: DebuggingApproachData = {
         approachName: args.approachName,
-        issue: 'Issue being debugged', // TODO: Add issue to schema
+        issue: args.issue,
         steps: args.steps,
-        findings: 'Findings during debugging', // TODO: Add findings to schema
+        findings: args.findings,
         resolution: args.resolution
       };
       
