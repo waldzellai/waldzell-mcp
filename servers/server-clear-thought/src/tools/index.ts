@@ -13,6 +13,14 @@ import { registerSystemsThinking } from './systems-thinking.js';
 import { registerScientificMethod } from './scientific-method.js';
 import { registerStructuredArgumentation } from './structured-argumentation.js';
 import { registerVisualReasoning } from './visual-reasoning.js';
+import { registerAnalogicalMapper } from './analogical-mapper.js';
+import { registerAssumptionXray } from './assumption-xray.js';
+import { registerComparativeAdvantage } from './comparative-advantage.js';
+import { registerDragPointAudit } from './drag-point-audit.js';
+import { registerSafeStruggleDesigner } from './safe-struggle-designer.js';
+import { registerSevenSeekersOrchestrator } from './seven-seekers-orchestrator.js';
+import { registerValueOfInformation } from './value-of-information.js';
+import { registerExistingToolExample } from './existing-tool-example.js';
 import { registerSessionManagement } from './session-management.js';
 
 /**
@@ -34,7 +42,15 @@ export function registerTools(server: McpServer, sessionState: SessionState): vo
   registerScientificMethod(server, sessionState);
   registerStructuredArgumentation(server, sessionState);
   registerVisualReasoning(server, sessionState);
-  
+  registerAnalogicalMapper(server, sessionState);
+  registerAssumptionXray(server, sessionState);
+  registerComparativeAdvantage(server, sessionState);
+  registerDragPointAudit(server, sessionState);
+  registerSafeStruggleDesigner(server, sessionState);
+  registerSevenSeekersOrchestrator(server, sessionState);
+  registerValueOfInformation(server, sessionState);
+  registerExistingToolExample(server, sessionState);
+
   // Register session management tools
   registerSessionManagement(server, sessionState);
 }
