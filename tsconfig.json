@@ -9,10 +9,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-
-  "include": ["servers/**/*"],
-  "exclude": ["node_modules"]
-=======
   "include": [],
   "exclude": [
     "node_modules",
@@ -24,5 +20,4 @@
     { "path": "./servers/server-google-styleguide" },
     { "path": "./servers/server-typestyle" }
   ]
-
 }
