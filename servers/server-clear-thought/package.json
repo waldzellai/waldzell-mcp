@@ -22,7 +22,7 @@
     "scripts": {
         "build": "tsc -p tsconfig.build.json",
         "build:smithery": "npx @smithery/cli build",
-        "test": "vitest",
+        "test": "vitest run",
         "test:coverage": "vitest --coverage",
         "clean": "rm -rf dist",
         "typecheck": "tsc --noEmit",
