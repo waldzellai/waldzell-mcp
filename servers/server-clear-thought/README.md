@@ -161,33 +161,36 @@ npx @waldzellai/clear-thought
 ### Mental Models
 
 ```typescript
-const response = await mcp.callTool('mentalmodel', {
+const response = await mcp.callTool('reasoning', {
+  operation: 'mentalmodel',
   modelName: 'first_principles',
   problem: 'How to implement a new feature?',
-  steps: ['Break down the problem', 'Analyze components', 'Build solution'],
+  steps: ['Break down the problem', 'Analyze components', 'Build solution']
 });
 ```
 
 ### Debugging Approaches
 
 ```typescript
-const response = await mcp.callTool('debuggingapproach', {
+const response = await mcp.callTool('reasoning', {
+  operation: 'debuggingapproach',
   approachName: 'binary_search',
   issue: 'Performance degradation in the system',
   steps: ['Identify performance metrics', 'Locate bottleneck', 'Implement solution'],
   findings: 'Database connections spiking during peak hours',
-  resolution: 'Optimized connection pooling',
+  resolution: 'Optimized connection pooling'
 });
 ```
 
 ### Sequential Thinking
 
 ```typescript
-const response = await mcp.callTool('sequentialthinking', {
+const response = await mcp.callTool('reasoning', {
+  operation: 'sequentialthinking',
   thought: 'Initial analysis of the problem',
   thoughtNumber: 1,
   totalThoughts: 3,
-  nextThoughtNeeded: true,
+  nextThoughtNeeded: true
 });
 ```
 

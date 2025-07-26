@@ -22,13 +22,22 @@ export class ToolsetRegistry {
     const schemas = this.operations.map((op) =>
       z.object({ operation: z.literal(op.name), ...op.schema })
     );
-    const schema = z.union(schemas as [z.ZodTypeAny, ...z.ZodTypeAny[]]);
+    const schema =
+      schemas.length === 1
+        ? schemas[0]
+        : z.union(
+            [schemas[0], schemas[1], ...schemas.slice(2)] as [
+              z.ZodTypeAny,
+              z.ZodTypeAny,
+              ...z.ZodTypeAny[]
+            ]
+          );
     const dispatcher = async (args: any) => {
       const op = this.operations.find((o) => o.name === args.operation);
       if (!op) throw new Error(`Unknown operation: ${args.operation}`);
       return op.handler(args);
     };
-    server.tool(this.slug, this.description, schema, dispatcher);
+    server.tool(this.slug, this.description, schema as any, dispatcher);
   }
 }
 
