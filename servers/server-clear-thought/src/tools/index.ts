@@ -21,6 +21,11 @@ import { registerSafeStruggleDesigner } from './safe-struggle-designer.js';
 import { registerSevenSeekersOrchestrator } from './seven-seekers-orchestrator.js';
 import { registerValueOfInformation } from './value-of-information.js';
 import { registerExistingToolExample } from './existing-tool-example.js';
+import { registerMindMap } from './mind-map.js';
+import { registerConceptMap } from './concept-map.js';
+import { registerFishboneDiagram } from './fishbone-diagram.js';
+import { registerSwotAnalysis } from './swot-analysis.js';
+import { registerIssueTree } from './issue-tree.js';
 import { registerSessionManagement } from './session-management.js';
 
 /**
@@ -49,6 +54,11 @@ export function registerTools(server: McpServer, sessionState: SessionState): vo
   registerSafeStruggleDesigner(server, sessionState);
   registerSevenSeekersOrchestrator(server, sessionState);
   registerValueOfInformation(server, sessionState);
+  registerMindMap(server, sessionState);
+  registerConceptMap(server, sessionState);
+  registerFishboneDiagram(server, sessionState);
+  registerSwotAnalysis(server, sessionState);
+  registerIssueTree(server, sessionState);
   registerExistingToolExample(server, sessionState);
 
   // Register session management tools
