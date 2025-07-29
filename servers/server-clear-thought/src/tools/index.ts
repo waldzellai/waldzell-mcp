@@ -1,39 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SessionState } from '../state/SessionState.js';
 
-import { registerSequentialThinking } from './sequential-thinking.js';
-import { registerMentalModel } from './mental-model.js';
-import { registerDebuggingApproach } from './debugging-approach.js';
-import { registerCollaborativeReasoning } from './collaborative-reasoning.js';
-import { registerDecisionFramework } from './decision-framework.js';
-import { registerMetacognitiveMonitoring } from './metacognitive.js';
-import { registerSocraticMethod } from './socratic-method.js';
-import { registerCreativeThinking } from './creative-thinking.js';
-import { registerSystemsThinking } from './systems-thinking.js';
-import { registerScientificMethod } from './scientific-method.js';
-import { registerStructuredArgumentation } from './structured-argumentation.js';
-import { registerVisualReasoning } from './visual-reasoning.js';
-import { registerAnalogicalMapper } from './analogical-mapper.js';
-import { registerAssumptionXray } from './assumption-xray.js';
-import { registerComparativeAdvantage } from './comparative-advantage.js';
-import { registerDragPointAudit } from './drag-point-audit.js';
-import { registerSafeStruggleDesigner } from './safe-struggle-designer.js';
-import { registerSevenSeekersOrchestrator } from './seven-seekers-orchestrator.js';
-import { registerValueOfInformation } from './value-of-information.js';
-import { registerExistingToolExample } from './existing-tool-example.js';
-import { registerMindMap } from './mind-map.js';
-import { registerConceptMap } from './concept-map.js';
-import { registerFishboneDiagram } from './fishbone-diagram.js';
-import { registerSwotAnalysis } from './swot-analysis.js';
-import { registerIssueTree } from './issue-tree.js';
-import { registerSessionManagement } from './session-management.js';
-
 /**
- * Registers all Clear Thought tools with the provided MCP server instance
+ * Registers all Clear Thought toolsets with the provided MCP server instance
  * @param server - The MCP server instance
  * @param sessionState - The session state manager
  */
 export function registerTools(server: McpServer, sessionState: SessionState): void {
+
   // Register all thinking and reasoning tools
   registerSequentialThinking(server, sessionState);
   registerMentalModel(server, sessionState);
@@ -64,3 +38,10 @@ export function registerTools(server: McpServer, sessionState: SessionState): vo
   // Register session management tools
   registerSessionManagement(server, sessionState);
 }
+=======
+  registerReasoningToolset(server, sessionState);
+  registerVisualizationToolset(server, sessionState);
+  registerUtilityToolset(server, sessionState);
+  registerSessionToolset(server, sessionState);
+}
+
