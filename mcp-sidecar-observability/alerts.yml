@@ -1,0 +1,21 @@
+groups:
+- name: mcp-observability
+  rules:
+  - alert: MCPHighErrorRate
+    expr: sum(rate(mcp_request_total{status="error"}[5m])) / sum(rate(mcp_request_total[5m])) > 0.05
+    for: 5m
+    labels: { severity: warning }
+    annotations:
+      summary: "MCP error rate > 5% (5m)"
+  - alert: MCPLatencyP95TooHigh
+    expr: histogram_quantile(0.95, sum by (le) (rate(mcp_request_duration_seconds_bucket[10m]))) > 1
+    for: 10m
+    labels: { severity: warning }
+    annotations:
+      summary: "MCP p95 latency > 1s (10m)"
+  - alert: CollectorDown
+    expr: absent(up{job="otelcol-sidecar"} == 1)
+    for: 2m
+    labels: { severity: critical }
+    annotations:
+      summary: "OTel Collector sidecar is DOWN"

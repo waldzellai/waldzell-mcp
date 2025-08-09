@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otelcol-config
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http: { endpoint: "0.0.0.0:4318" }
+          grpc: { endpoint: "0.0.0.0:4317" }
+    processors:
+      memory_limiter: {}
+      batch: {}
+      attributes/sanitize:
+        actions:
+          - key: user.account_uuid
+            action: hash
+          - key: prompt
+            action: delete
+    exporters:
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+      debug:
+        verbosity: normal
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch, attributes/sanitize]
+          exporters: [prometheus]
+        logs:
+          receivers: [otlp]
+          processors: [batch, attributes/sanitize]
+          exporters: [debug]

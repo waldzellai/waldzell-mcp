@@ -1,0 +1,11 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: mcp-server
+spec:
+  selector:
+    matchLabels:
+      app: mcp-server
+  endpoints:
+    - port: metrics
+      interval: 15s

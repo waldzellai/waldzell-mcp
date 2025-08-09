@@ -1,0 +1,39 @@
+{
+  "title": "MCP Sidecar Observability",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Error Rate (5m)",
+      "targets": [
+        {
+          "expr": "sum(rate(mcp_request_total{status=\"error\"}[5m])) / sum(rate(mcp_request_total[5m]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests by status",
+      "targets": [
+        { "expr": "sum(rate(mcp_request_total[5m])) by (status)" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "p95 latency (seconds)",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(mcp_request_duration_seconds_bucket[5m])))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Claude tokens (if enabled)",
+      "targets": [
+        { "expr": "sum(rate(claude_code_token_usage[5m])) by (type)" }
+      ]
+    }
+  ]
+}
