@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mcp-server }
+  template:
+    metadata:
+      labels: { app: mcp-server }
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/your-org/mcp-sidecar-observability:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4000
+          env:
+            - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: "http/protobuf" }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://localhost:4318" }
+            - { name: OTEL_RESOURCE_ATTRIBUTES, value: "service.name=mcp-server,service.version=0.1.0,deployment.environment=dev" }
+            - { name: OTEL_METRIC_EXPORT_INTERVAL, value: "60000" }
+            - { name: CLAUDE_CODE_ENABLE_TELEMETRY, value: "1" }
+            - { name: OTEL_METRICS_EXPORTER, value: "otlp" }
+            - { name: OTEL_LOGS_EXPORTER, value: "otlp" }
+        - name: otelcol
+          image: otel/opentelemetry-collector-contrib:v0.131.0
+          args: ["--config=/etc/otelcol/config.yaml"]
+          ports:
+            - containerPort: 4317
+            - containerPort: 4318
+            - containerPort: 8889
+          volumeMounts:
+            - name: otel-config
+              mountPath: /etc/otelcol
+      volumes:
+        - name: otel-config
+          configMap:
+            name: otelcol-config
