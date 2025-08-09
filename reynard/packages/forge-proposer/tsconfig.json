@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "composite": true,
+    "paths": {
+      "@forge-core/*": ["../forge-core/src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../forge-core" }
+  ]
+}

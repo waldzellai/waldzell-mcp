@@ -1,0 +1,25 @@
+project: "reynard-forge-demo"
+models:
+  planner: { provider: openai, name: gpt-4.1, temperature: 0.2 }
+  coder:   { provider: openai, name: gpt-4.1, temperature: 0.3 }
+  grader:  { provider: openai, name: gpt-4o-mini, temperature: 0.0 }
+  attacker:{ provider: anthropic, name: claude-3-haiku, temperature: 0.7 }
+sandbox:
+  driver: docker
+  cpuMsLimit: 20000
+  memMB: 2048
+  fsReadonly: true
+  writableMounts: ["/tmp/working", "/ledger"]
+  networkEgress: allowlist
+  egressAllowlist: ["api.github.com"]
+budgets:
+  maxNodes: 18
+  maxToolKinds: 6
+  maxLOC: 2500
+noveltyThresholds:
+  behavioralDistanceMin: 0.18
+  structuralDeltaMin: 0.12
+  sizePenaltyMax: 0.35
+stability:
+  seedVariants: 3
+  maxMetricVariance: 0.05
