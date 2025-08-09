@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/forge-core" },
+    { "path": "packages/forge-sandbox" },
+    { "path": "packages/forge-ledger" },
+    { "path": "packages/forge-exec" },
+    { "path": "packages/forge-proposer" },
+    { "path": "packages/forge-eval" },
+    { "path": "packages/forge-contracts" },
+    { "path": "packages/forge-ui" },
+    { "path": "packages/forge-cli" }
+  ]
+}

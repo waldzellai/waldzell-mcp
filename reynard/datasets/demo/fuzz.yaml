@@ -1,0 +1,5 @@
+fields:
+  query:
+    - type: synonym
+    - type: casing
+    - type: whitespace

@@ -1,0 +1,6 @@
+FROM node:20-slim
+RUN useradd -ms /bin/bash runner
+USER runner
+WORKDIR /app
+# NOTE: root fs is read-only at runtime; configure via container runtime.
+# TODO: add gVisor/Firecracker profiles later.
