@@ -18,6 +18,15 @@
     { "path": "./servers/server-stochasticthinking" },
     { "path": "./servers/server-clear-thought" },
     { "path": "./servers/server-google-styleguide" },
-    { "path": "./servers/server-typestyle" }
+    { "path": "./servers/server-typestyle" },
+    { "path": "packages/forge-core" },
+    { "path": "packages/forge-sandbox" },
+    { "path": "packages/forge-ledger" },
+    { "path": "packages/forge-exec" },
+    { "path": "packages/forge-proposer" },
+    { "path": "packages/forge-eval" },
+    { "path": "packages/forge-contracts" },
+    { "path": "packages/forge-ui" },
+    { "path": "packages/forge-cli" }
   ]
 }

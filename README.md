@@ -1,50 +1,59 @@
-# Waldzell MCP Servers
+# Waldzell MCP Monorepo
 
-This repository contains a set of Model Context Protocol (MCP) servers. Each server lives in its own folder under `servers/` and can be used independently. The project is intentionally lightweight and does not make use of a complex monorepo toolchain.
+This repository is a `pnpm` monorepo containing a collection of Model Context Protocol (MCP) servers, tools, and related projects.
 
-## Available servers
+## Directory Structure
 
-- [Clear Thought](./servers/server-clear-thought) – Sequential thinking tools inspired by James Clear
-- [Google Styleguide](./servers/server-google-styleguide) – Google TypeScript style guide server
-- [Stochastic Thinking](./servers/server-stochasticthinking) – Stochastic thinking utilities
-- [TypeStyle](./servers/server-typestyle) – TypeScript style guide server
+This repository is organized into the following main directories:
 
-## Getting started
+-   `servers/`: Contains the MCP servers. Each server is a separate package.
+-   `reynard/`: A tool for creating and managing MCP servers.
+-   `mcp-sidecar-observability/`: A Dockerized observability stack for the MCP servers, using OpenTelemetry, Prometheus, and Grafana.
+-   `agentic-scripts/`: A collection of shell scripts for "agentic enhancement" of the projects in this repository.
+-   `collective-intelligence/`: A set of shell scripts for telemetry, used by the `agentic-scripts`.
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18 or higher
-- npm (comes with Node.js)
+-   [Node.js](https://nodejs.org/) (version 18 or higher)
+-   [pnpm](https://pnpm.io/) (version 9 or higher)
 
-Install dependencies for all servers:
+### Installation
 
-```bash
-npm install
-```
+1.  Clone the repository:
 
-Build every server:
+    ```bash
+    git clone https://github.com/waldzellai/mcp-servers.git
+    cd mcp-servers
+    ```
 
-```bash
-npm run build --workspaces
-```
+2.  Install the dependencies using `pnpm`:
 
-Run tests for all servers:
+    ```bash
+    pnpm install
+    ```
 
-```bash
-npm test --workspaces
-```
+## Available Scripts
 
-Refer to each server's README for usage instructions and additional scripts.
+The following scripts are available at the root of the repository and can be run with `pnpm`:
+
+-   `pnpm build`: Builds all the packages in the monorepo.
+-   `pnpm test`: Runs the tests for all the packages.
+-   `pnpm format`: Formats the code using Prettier.
+
+For more specific scripts, please refer to the `package.json` file in each package's directory.
 
 ## Publishing
 
-To publish the packages defined in this repository:
+This repository uses [Changesets](https://github.com/changesets/changesets) to manage releases. To publish the packages, run the following command:
 
 ```bash
-npm run build --workspaces && changeset publish
+pnpm publish-packages
 ```
+
+This will build all the packages and then publish them based on the current changeset information.
 
 ## License
 
 All code in this repository is licensed under the MIT License.
-
