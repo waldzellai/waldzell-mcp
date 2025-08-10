@@ -49,3 +49,21 @@ claude_code_mcp_config.json
 # Never commit these
 model-context-protocol-resources/
 references/
+.runs
+.env.*.local
+*.swp
+*.swo
+*~
+Thumbs.db
+.nyc_output/
+*.tmp
+*.temp
+.cache/
+*.bak
+*.bak2
+index-old-bloated.ts
+mcp_config_claude_code.json
+.claude/
+trees/
+specs/
+temp/

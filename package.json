@@ -3,18 +3,20 @@
   "version": "0.0.1",
   "private": true,
   "workspaces": [
-    "servers/*"
+    "servers/*",
+    "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
-    "watch": "npm run watch --workspaces",
-    "test": "npm test --workspaces",
-    "docker": "npm run docker --workspace @waldzellai/clear-thought",
+    "build": "pnpm -r build",
+    "watch": "pnpm -r watch",
+    "test": "pnpm -r test",
+    "lint": "eslint . --ext .ts,.tsx",
+    "typecheck": "tsc -b",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "smithery:yelp-fusion": "cd servers/server-yelp-fusionai && smithery deploy",
     "smithery:stochastic": "cd servers/server-stochasticthinking && smithery deploy",
     "smithery:clear-thought": "cd servers/server-clear-thought && smithery deploy",
-    "publish-packages": "npm run build --workspaces && changeset publish"
+    "publish-packages": "pnpm build && changeset publish"
   },
   "author": "waldzellai",
   "license": "MIT",
@@ -29,11 +31,9 @@
     "@changesets/cli": "^2.26.2",
     "@types/node": "^22.13.4",
     "prettier": "^3.1.0",
-    "typescript": "^5.7.3"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.5.0",
-    "chalk": "^5.4.1"
-  },
-  "packageManager": "yarn@4.6.0+sha512.5383cc12567a95f1d668fbe762dfe0075c595b4bfff433be478dbbe24e05251a8e8c3eb992a986667c1d53b6c3a9c85b8398c35a960587fbd9fa3a0915406728"
+    "typescript": "^5.7.3",
+    "eslint": "^9.5.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0"
+  }
 }
