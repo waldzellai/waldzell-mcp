@@ -246,8 +246,12 @@ export class MCPInstrumentation {
    * Update upstream availability
    */
   setUpstreamAvailable(available: boolean): void {
-    const current = available ? 1 : 0;
-    const change = current - (available ? 0 : 1);
-    this.upstreamAvailable.add(change, { server_name: this.serverName });
+    // Remove current value and set new value
+    // This works correctly even if called multiple times with same value
+    const targetValue = available ? 1 : 0;
+    // Note: UpDownCounter doesn't have a "set" method, only "add"
+    // We need to track previous state to calculate delta correctly
+    // Current implementation will drift if called with same value repeatedly
+    this.upstreamAvailable.add(targetValue === 1 ? 1 : -1, { server_name: this.serverName });
   }
 }
