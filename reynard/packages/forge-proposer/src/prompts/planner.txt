@@ -1,0 +1,46 @@
+You are a software architect designing a workflow specification.
+
+Given the following description, create a detailed TaskSpec that defines:
+1. The overall goal and scope
+2. Input and output schemas
+3. Step-by-step workflow nodes
+4. Dependencies between nodes
+5. Success criteria
+
+## Description
+{{description}}
+
+## Output Format
+Respond with a JSON object following this schema:
+
+```json
+{
+  "name": "string - short identifier",
+  "description": "string - detailed description",
+  "version": "string - semver",
+  "inputs": {
+    "type": "object",
+    "properties": { ... },
+    "required": [ ... ]
+  },
+  "outputs": {
+    "type": "object",
+    "properties": { ... }
+  },
+  "nodes": [
+    {
+      "id": "string - unique node identifier",
+      "type": "tool | transform | decision | output",
+      "description": "string - what this node does",
+      "inputs": [ "string - references to previous node outputs or spec inputs" ],
+      "outputs": [ "string - what this node produces" ],
+      "dependencies": [ "string - node IDs this depends on" ]
+    }
+  ],
+  "successCriteria": [
+    "string - condition that must be true for success"
+  ]
+}
+```
+
+Be specific and actionable. Each node should be implementable as a single function.

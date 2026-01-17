@@ -1,0 +1,30 @@
+{
+  "session_id": "reynard-full-2026-01-17",
+  "started_at": "2026-01-17T20:00:00Z",
+  "source": "reynard/specs/reynard-full/",
+  "budget_total": 100,
+  "budget_remaining": 0,
+  "budget_used": 100,
+  "commitment_level": 0,
+  "phase": "complete",
+  "current": null,
+  "queue": [],
+  "completed": [
+    {"id": "forge-core", "budget": 8, "status": "COMPLETE", "iterations": 1, "score": 0.97},
+    {"id": "forge-ledger", "budget": 7, "status": "COMPLETE", "iterations": 1, "score": 0.95},
+    {"id": "forge-sandbox", "budget": 8, "status": "COMPLETE", "iterations": 1, "score": 0.91},
+    {"id": "forge-contracts", "budget": 6, "status": "COMPLETE", "iterations": 1, "score": 0.90},
+    {"id": "forge-exec", "budget": 12, "status": "COMPLETE", "iterations": 1, "score": 0.91},
+    {"id": "forge-eval", "budget": 10, "status": "COMPLETE", "iterations": 1, "score": 0.96},
+    {"id": "forge-redteam", "budget": 7, "status": "COMPLETE", "iterations": 1, "score": 0.96},
+    {"id": "forge-proposer", "budget": 12, "status": "COMPLETE", "iterations": 1, "score": 0.94},
+    {"id": "forge-ui", "budget": 10, "status": "COMPLETE", "iterations": 1, "score": 0.93},
+    {"id": "forge-cli", "budget": 10, "status": "COMPLETE", "iterations": 1, "score": 0.95},
+    {"id": "adas-system", "budget": 10, "status": "COMPLETE", "iterations": 1, "score": 0.98}
+  ],
+  "config": {
+    "max_iterations": 3,
+    "confidence_threshold": 0.9,
+    "worktree_mode": false
+  }
+}

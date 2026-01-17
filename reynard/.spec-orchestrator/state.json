@@ -1,0 +1,23 @@
+{
+  "session_id": "reynard-full-2026-01-17",
+  "started_at": "2026-01-17T00:00:00Z",
+  "budget_total": 100,
+  "budget_remaining": 100,
+  "commitment_level": 0,
+  "queue": [
+    { "spec": "forge-core", "status": "READY", "budget": 8, "deps": [] },
+    { "spec": "forge-sandbox", "status": "BLOCKED", "budget": 10, "deps": ["forge-core"] },
+    { "spec": "forge-ledger", "status": "BLOCKED", "budget": 8, "deps": ["forge-core"] },
+    { "spec": "forge-proposer", "status": "BLOCKED", "budget": 15, "deps": ["forge-core"] },
+    { "spec": "forge-exec", "status": "BLOCKED", "budget": 15, "deps": ["forge-core", "forge-sandbox", "forge-ledger"] },
+    { "spec": "forge-eval", "status": "BLOCKED", "budget": 10, "deps": ["forge-exec", "forge-sandbox", "forge-ledger"] },
+    { "spec": "forge-redteam", "status": "BLOCKED", "budget": 6, "deps": ["forge-exec", "forge-sandbox", "forge-ledger"] },
+    { "spec": "forge-contracts", "status": "BLOCKED", "budget": 5, "deps": ["forge-sandbox"] },
+    { "spec": "forge-ui", "status": "BLOCKED", "budget": 7, "deps": ["forge-proposer", "forge-exec", "forge-eval", "forge-redteam"] },
+    { "spec": "forge-cli", "status": "BLOCKED", "budget": 8, "deps": ["forge-core", "forge-proposer", "forge-exec", "forge-eval", "forge-redteam"] },
+    { "spec": "adas-system", "status": "BLOCKED", "budget": 8, "deps": ["forge-core", "forge-sandbox", "forge-ledger", "forge-proposer", "forge-exec", "forge-eval", "forge-redteam", "forge-contracts", "forge-ui", "forge-cli"] }
+  ],
+  "completed": [],
+  "current": null,
+  "implementation_log": ".spec-orchestrator/implementation-log.md"
+}

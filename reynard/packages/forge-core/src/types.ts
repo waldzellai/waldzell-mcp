@@ -41,7 +41,44 @@ export interface CandidateManifest {
   notes?: string;
 }
 
-export interface NodeSpec { id: string; kind: 'tool'|'llm'|'router'|'critic'; /* TODO: define detail */ }
+export interface BaseNodeSpec {
+  id: string;
+  kind: 'tool' | 'llm' | 'router' | 'critic';
+}
+
+export interface ToolNodeSpec extends BaseNodeSpec {
+  kind: 'tool';
+  toolId: string;
+  config?: Record<string, unknown>;
+  timeout?: number;
+}
+
+export interface LLMNodeSpec extends BaseNodeSpec {
+  kind: 'llm';
+  modelPin: ModelPin;
+  promptTemplate: string;
+  maxTokens?: number;
+}
+
+export interface RouterNodeSpec extends BaseNodeSpec {
+  kind: 'router';
+  condition: string; // JavaScript expression evaluated at runtime
+  routes: Record<string, string>; // condition result -> nodeId
+}
+
+export interface CriticNodeSpec extends BaseNodeSpec {
+  kind: 'critic';
+  verdictSchema: {
+    pass: boolean;
+    score?: number;
+    feedback?: string;
+    action: 'continue' | 'retry' | 'abort';
+  };
+  retryLimit?: number;
+}
+
+export type NodeSpec = ToolNodeSpec | LLMNodeSpec | RouterNodeSpec | CriticNodeSpec;
+
 export interface EdgeSpec { from: string; to: string; condition?: string; }
 
 export interface GraphSpec {
