@@ -114,27 +114,18 @@ app.post('/', async (request, reply) => {
  * SSE endpoint for streaming responses
  * GET /sse
  * 
- * Note: Full SSE proxy implementation would require:
+ * Currently not implemented. Future implementation would require:
  * - EventSource connection to upstream
  * - Message forwarding with instrumentation
  * - Connection lifecycle management
- * 
- * For now, this is a placeholder. Most MCP servers use POST / for all communication.
  */
 app.get('/sse', async (request, reply) => {
-  instrumentation.sseStreamOpened();
-  
-  reply.raw.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-  });
-  
-  reply.raw.write('data: {"jsonrpc":"2.0","error":{"code":-32601,"message":"SSE proxy not yet implemented"}}\n\n');
-  
-  request.raw.on('close', () => {
-    instrumentation.sseStreamClosed();
-  });
+  reply.code(501);
+  return {
+    error: 'Not Implemented',
+    message: 'SSE transport is not yet supported. Please use HTTP POST for MCP communication.',
+    supportedTransports: ['http-post'],
+  };
 });
 
 /**
