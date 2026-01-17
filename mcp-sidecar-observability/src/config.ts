@@ -50,7 +50,7 @@ export function loadConfig(): MCPSidecarConfig {
     },
     otel: {
       serviceName: process.env.OTEL_SERVICE_NAME || 'mcp-sidecar',
-      serviceVersion: process.env.SERVICE_VERSION || '0.1.0',
+      serviceVersion: process.env.SERVICE_VERSION || '0.2.0',
       environment: process.env.OTEL_ENV || 'dev',
       exportIntervalMs: Number(process.env.OTEL_METRIC_EXPORT_INTERVAL) || 10_000,
       endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
