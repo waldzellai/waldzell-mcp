@@ -1,9 +1,9 @@
 {
   "name": "mcp-sidecar-observability",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "MCP server + Claude Code + OTel via Collector sidecar",
+  "description": "Generic MCP observability sidecar - HTTP+SSE proxy with OpenTelemetry instrumentation",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -13,7 +13,6 @@
     "test": "tsx --test test/**/*.test.ts"
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^1.0.72",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.0.1",
     "@opentelemetry/sdk-metrics": "^2.0.1",
@@ -24,7 +23,8 @@
   "devDependencies": {
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.16.2",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "@types/node": "^20.0.0"
   },
   "engines": { "node": ">=20" },
   "license": "Apache-2.0"

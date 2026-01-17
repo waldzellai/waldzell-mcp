@@ -1,30 +1,75 @@
 version: "3.9"
 
 services:
-  mcp-server:
+  # Example upstream MCP server (weather API)
+  # Replace this with your actual MCP server
+  weather-server:
+    image: node:20-slim
+    working_dir: /app
+    command: >
+      sh -c "npm install -g @modelcontextprotocol/server-weather &&
+             exec npx @modelcontextprotocol/server-weather"
+    environment:
+      PORT: 3000
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # MCP Observability Sidecar (proxies to weather-server)
+  mcp-sidecar:
     build: .
     environment:
+      # Upstream server configuration
+      MCP_UPSTREAM_URL: http://weather-server:3000
+      MCP_UPSTREAM_NAME: weather-api
+      MCP_UPSTREAM_TIMEOUT_MS: 30000
+      
+      # Listen configuration
+      PORT: 4000
+      HOST: 0.0.0.0
+      
+      # OpenTelemetry configuration
+      OTEL_SERVICE_NAME: mcp-sidecar
+      SERVICE_VERSION: 0.2.0
+      OTEL_ENV: dev
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4318
-      OTEL_RESOURCE_ATTRIBUTES: service.name=mcp-server,service.version=0.1.0,deployment.environment=dev
       OTEL_METRIC_EXPORT_INTERVAL: 10000
-      CLAUDE_CODE_ENABLE_TELEMETRY: "1"
-      OTEL_METRICS_EXPORTER: otlp
-      OTEL_LOGS_EXPORTER: otlp
-      OTEL_LOG_USER_PROMPTS: "1"
+      
+      # Logging
+      LOG_LEVEL: info
     ports:
       - "4000:4000"
+    networks:
+      - mcp-network
     depends_on:
-      - otelcol
+      weather-server:
+        condition: service_healthy
+      otelcol:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
+  # OpenTelemetry Collector (sidecar pattern)
   otelcol:
-    image: otel/opentelemetry-collector-contrib:v0.131.0
+    image: otel/opentelemetry-collector-contrib:0.113.0
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
     ports:
-      - "8889:8889"
+      - "8889:8889"  # Prometheus exporter
+      - "4318:4318"  # OTLP HTTP receiver
+    networks:
+      - mcp-network
 
+  # Prometheus (metrics storage)
   prometheus:
     image: prom/prometheus:v2.52.0
     volumes:
@@ -32,15 +77,28 @@ services:
       - ./alerts.yml:/etc/prometheus/alerts.yml:ro
     ports:
       - "9090:9090"
+    networks:
+      - mcp-network
     depends_on:
       - otelcol
 
+  # Grafana (visualization)
   grafana:
     image: grafana/grafana:11.0.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
     ports:
       - "3000:3000"
     volumes:
       - ./grafana/provisioning/dashboards/default.yaml:/etc/grafana/provisioning/dashboards/default.yaml:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - mcp-network
     depends_on:
       - prometheus
+
+networks:
+  mcp-network:
+    driver: bridge

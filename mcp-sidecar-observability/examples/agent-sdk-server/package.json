@@ -1,0 +1,23 @@
+{
+  "name": "agent-sdk-mcp-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Exposes Claude Agent SDK as an MCP server - interesting pattern!",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^1.0.0",
+    "fastify": "^5.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
