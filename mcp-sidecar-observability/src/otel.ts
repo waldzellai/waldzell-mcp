@@ -3,7 +3,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 
-const exportIntervalMillis = Number(process.env.OTEL_METRIC_EXPORT_INTERVAL) || 60_000;
+const exportIntervalMillis = Number(process.env.OTEL_METRIC_EXPORT_INTERVAL) || 10_000;
 
 const metricReader = new PeriodicExportingMetricReader({
   exporter: new OTLPMetricExporter(), // uses OTEL_EXPORTER_OTLP_* envs

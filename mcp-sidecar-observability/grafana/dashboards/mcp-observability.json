@@ -1,38 +1,310 @@
 {
   "title": "MCP Sidecar Observability",
+  "description": "Generic MCP protocol observability dashboard",
+  "tags": ["mcp", "observability", "opentelemetry"],
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
   "panels": [
     {
+      "id": 1,
       "type": "stat",
-      "title": "Error Rate (5m)",
+      "title": "Upstream Status",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
       "targets": [
         {
-          "expr": "sum(rate(mcp_request_total{status=\"error\"}[5m])) / sum(rate(mcp_request_total[5m]))"
+          "expr": "mcp_upstream_available",
+          "legendFormat": "{{server_name}}"
         }
-      ]
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "value": 1, "text": "UP", "color": "green" },
+            { "value": 0, "text": "DOWN", "color": "red" }
+          ]
+        }
+      }
     },
     {
-      "type": "timeseries",
-      "title": "Requests by status",
+      "id": 2,
+      "type": "stat",
+      "title": "Request Rate (req/s)",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
       "targets": [
-        { "expr": "sum(rate(mcp_request_total[5m])) by (status)" }
-      ]
+        {
+          "expr": "sum(rate(mcp_requests_total[1m]))"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area"
+      }
     },
     {
-      "type": "timeseries",
-      "title": "p95 latency (seconds)",
+      "id": 3,
+      "type": "stat",
+      "title": "Error Rate (5m)",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(mcp_requests_total{status=\"error\"}[5m])) / sum(rate(mcp_requests_total[5m])) * 100"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "unit": "percent"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": 0, "color": "green" },
+              { "value": 1, "color": "yellow" },
+              { "value": 5, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Active Connections",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "mcp_active_connections"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "p95 Latency",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum by (le) (rate(mcp_request_duration_seconds_bucket[5m])))"
         }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "unit": "s"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": 0, "color": "green" },
+              { "value": 1, "color": "yellow" },
+              { "value": 5, "color": "red" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Requests by Method",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "expr": "sum(rate(mcp_requests_total[1m])) by (method)",
+          "legendFormat": "{{method}}"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right" }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Requests by Status",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "expr": "sum(rate(mcp_requests_total[1m])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right" }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Latency Percentiles",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(mcp_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.90, sum by (le) (rate(mcp_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p90"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(mcp_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(mcp_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Tool Calls by Tool Name",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "expr": "sum(rate(mcp_tool_calls_total[1m])) by (tool_name)",
+          "legendFormat": "{{tool_name}}"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right" }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Tool Call Duration",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, tool_name) (rate(mcp_tool_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{tool_name}} p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Resource Operations",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "expr": "sum(rate(mcp_resources_listed_total[1m]))",
+          "legendFormat": "resources/list"
+        },
+        {
+          "expr": "sum(rate(mcp_resource_reads_total[1m]))",
+          "legendFormat": "resources/read"
+        }
       ]
     },
     {
+      "id": 12,
       "type": "timeseries",
-      "title": "Claude tokens (if enabled)",
+      "title": "Message Throughput (bytes/s)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
       "targets": [
-        { "expr": "sum(rate(claude_code_token_usage[5m])) by (type)" }
+        {
+          "expr": "sum(rate(mcp_message_bytes_total[1m])) by (direction)",
+          "legendFormat": "{{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Top Methods by Request Count",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (method) (increase(mcp_requests_total[5m])))",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "renameByPattern": {
+              "method": "Method",
+              "Value": "Requests (5m)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "table",
+      "title": "Top Tools by Call Count",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (tool_name) (increase(mcp_tool_calls_total[5m])))",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "renameByPattern": {
+              "tool_name": "Tool",
+              "Value": "Calls (5m)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Protocol Errors",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 44 },
+      "targets": [
+        {
+          "expr": "sum(rate(mcp_protocol_errors_total[1m])) by (error_code)",
+          "legendFormat": "{{error_code}}"
+        }
       ]
     }
   ]
