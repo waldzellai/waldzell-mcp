@@ -49,3 +49,6 @@ claude_code_mcp_config.json
 # Never commit these
 model-context-protocol-resources/
 references/
+
+# Local development only (not tracked on GitHub)
+collective-intelligence/

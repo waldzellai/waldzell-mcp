@@ -8,7 +8,7 @@ export interface ToolAdapter<I,O> {
   compensate(intentId: string, ctx: ToolContext): Promise<void>;
 }
 export interface Ledger {
-  recordPrepare(toolId: string, inputHash: string): Promise<string>; // returns intentId
+  recordPrepare(toolId: string, inputHash: string, payload?: string): Promise<string>; // returns intentId
   recordCommit(intentId: string): Promise<void>;
   recordCompensate(intentId: string): Promise<void>;
   findByKey(toolId: string, inputHash: string): Promise<string | null>;

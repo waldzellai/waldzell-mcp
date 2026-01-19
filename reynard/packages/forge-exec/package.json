@@ -4,5 +4,10 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "scripts": { "build": "tsc -p tsconfig.json" }
+  "scripts": { "build": "tsc -p tsconfig.json" },
+  "dependencies": {
+    "forge-core": "workspace:*",
+    "forge-ledger": "workspace:*",
+    "forge-sandbox": "workspace:*"
+  }
 }
