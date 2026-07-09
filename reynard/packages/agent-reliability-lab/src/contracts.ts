@@ -99,6 +99,12 @@ export interface EvaluationCase {
   readonly expected: unknown;
 }
 
+export interface LoadedEvaluationCases {
+  readonly rawText: string;
+  readonly cases: readonly EvaluationCase[];
+  readonly digest: `sha256:${string}`;
+}
+
 export interface CandidateRequest {
   readonly schemaVersion: 1;
   readonly caseId: string;
@@ -153,7 +159,7 @@ export interface DockerRunInput {
 export interface ArtifactWriteInput {
   readonly runsDirectory: string;
   readonly manifest: RunManifest;
-  readonly cases: readonly EvaluationCase[];
+  readonly loadedCases: LoadedEvaluationCases;
   readonly baselineExecutions: readonly ExecutionResult[];
   readonly candidateExecutions: readonly ExecutionResult[];
   readonly baselineEvaluation: EvaluationResult;
@@ -169,6 +175,10 @@ export interface ComparisonResult {
   }[];
 }
 
+export type ProtocolErrorCode =
+  | "malformed JSONL output"
+  | "invalid JSON output";
+
 export interface TraceRecord {
   readonly schemaVersion: 1;
   readonly runId: RunManifest["runId"];
@@ -179,7 +189,7 @@ export interface TraceRecord {
   readonly timedOut: false;
   readonly protocolResult:
     | { readonly ok: true; readonly output: unknown }
-    | { readonly ok: false; readonly error: string };
+    | { readonly ok: false; readonly error: ProtocolErrorCode };
   readonly stderr: string;
   readonly durationMillis: number;
 }
@@ -326,6 +336,14 @@ export const EvaluationCaseSchema = z
     }
   });
 
+export const LoadedEvaluationCasesSchema = z
+  .object({
+    rawText: z.string(),
+    cases: z.array(EvaluationCaseSchema),
+    digest: Sha256DigestSchema,
+  })
+  .strict();
+
 export const CandidateRequestSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -444,7 +462,7 @@ export const TraceRecordSchema = z
       z
         .object({
           ok: z.literal(false),
-          error: nonEmptyStringSchema,
+          error: z.enum(["malformed JSONL output", "invalid JSON output"]),
         })
         .strict(),
     ]),
@@ -468,7 +486,7 @@ export const ArtifactWriteInputSchema = z
   .object({
     runsDirectory: nonEmptyStringSchema,
     manifest: RunManifestSchema,
-    cases: z.array(EvaluationCaseSchema),
+    loadedCases: LoadedEvaluationCasesSchema,
     baselineExecutions: z.array(ExecutionResultSchema),
     candidateExecutions: z.array(ExecutionResultSchema),
     baselineEvaluation: EvaluationResultSchema,

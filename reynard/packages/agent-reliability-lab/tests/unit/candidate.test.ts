@@ -28,6 +28,7 @@ import { V1_INPUT_LIMITS } from "../../src/contracts.js";
 import {
   createCandidateRequests,
   loadEvaluationCases,
+  parseEvaluationCasesText,
 } from "../../src/runner.js";
 
 const temporaryDirectories: string[] = [];
@@ -651,16 +652,131 @@ describe("candidate loader", () => {
 });
 
 describe("case loader", () => {
+  test("loads one case per JSONL line in original order", async () => {
+    const root = await temporaryDirectory("reynard-case-jsonl-");
+    const casesPath = join(root, "cases.jsonl");
+    const rawText = [
+      JSON.stringify({ id: "case-2", input: 2, expected: { answer: 2 } }),
+      JSON.stringify({ id: "case-1", input: 1, expected: { answer: 1 } }),
+      "",
+    ].join("\n");
+    await writeFile(casesPath, rawText);
+
+    const loaded = await loadEvaluationCases(casesPath);
+
+    expect(loaded).toEqual({
+      ok: true,
+      value: {
+        rawText,
+        digest: sha256(Buffer.from(rawText)),
+        cases: [
+          { id: "case-2", input: 2, expected: { answer: 2 } },
+          { id: "case-1", input: 1, expected: { answer: 1 } },
+        ],
+      },
+    });
+  });
+
+  test.each([
+    [
+      "UTF-8 BOM",
+      Buffer.concat([
+        Buffer.from([0xef, 0xbb, 0xbf]),
+        Buffer.from(
+          `${JSON.stringify({ id: "case-1", input: "safe", expected: "safe" })}\n`,
+        ),
+      ]),
+    ],
+    ["invalid UTF-8", Buffer.from([0xff, 0x0a])],
+  ])("rejects %s so the retained text preserves exact source bytes", async (_label, bytes) => {
+    const root = await temporaryDirectory("reynard-case-encoding-");
+    const casesPath = join(root, "cases.jsonl");
+    await writeFile(casesPath, bytes);
+
+    const loaded = await loadEvaluationCases(casesPath);
+
+    expect(loaded).toEqual({
+      ok: false,
+      error: expect.objectContaining({ _tag: "InvalidInput" }),
+    });
+  });
+
+  test("rejects in-memory case text that cannot round-trip through UTF-8", () => {
+    const unpairedSurrogate = "\ud800";
+    const rawText = `{"id":"case-1","input":"${unpairedSurrogate}","expected":null}\n`;
+
+    expect(parseEvaluationCasesText(rawText)).toEqual({
+      ok: false,
+      error: expect.objectContaining({ _tag: "InvalidInput" }),
+    });
+  });
+
+  test.each([
+    ["empty file", "", "Case file cannot be empty"],
+    ["empty first line", "\n", "line 1"],
+    [
+      "malformed second line",
+      `${JSON.stringify({ id: "case-1", input: 1, expected: 1 })}\nnot-json\n`,
+      "line 2",
+    ],
+    [
+      "invalid second case",
+      `${JSON.stringify({ id: "case-1", input: 1, expected: 1 })}\n${JSON.stringify({ id: "", input: 2, expected: 2 })}\n`,
+      "line 2",
+    ],
+  ])("rejects %s with a precise error", async (_label, contents, message) => {
+    const root = await temporaryDirectory("reynard-case-jsonl-invalid-");
+    const casesPath = join(root, "cases.jsonl");
+    await writeFile(casesPath, contents);
+
+    const loaded = await loadEvaluationCases(casesPath);
+
+    expect(loaded).toEqual({
+      ok: false,
+      error: expect.objectContaining({ _tag: "InvalidInput" }),
+    });
+    if (loaded.ok) throw new Error("invalid cases accepted");
+    expect(loaded.error.message).toContain(message);
+  });
+
+  test("rejects a duplicate case ID on the duplicate line", async () => {
+    const root = await temporaryDirectory("reynard-case-jsonl-duplicate-");
+    const casesPath = join(root, "cases.jsonl");
+    await writeFile(
+      casesPath,
+      [
+        JSON.stringify({ id: "duplicate", input: 1, expected: 1 }),
+        JSON.stringify({ id: "duplicate", input: 2, expected: 2 }),
+        "",
+      ].join("\n"),
+    );
+
+    const loaded = await loadEvaluationCases(casesPath);
+
+    expect(loaded).toEqual({
+      ok: false,
+      error: expect.objectContaining({ _tag: "InvalidInput" }),
+    });
+    if (loaded.ok) throw new Error("duplicate cases accepted");
+    expect(loaded.error.message).toContain("line 2");
+    expect(loaded.error.message).toContain("Duplicate case ID");
+  });
+
   test("accepts the case-file byte limit and rejects one byte over", async () => {
     const root = await temporaryDirectory("reynard-case-file-limit-");
-    const casesPath = join(root, "cases.json");
-    const base = Buffer.from(
-      JSON.stringify([{ id: "case-1", input: { value: 1 }, expected: 2 }]),
-    );
-    const atLimit = Buffer.concat([
-      base,
-      Buffer.alloc(V1_INPUT_LIMITS.caseFileBytes - base.byteLength, 0x20),
-    ]);
+    const casesPath = join(root, "cases.jsonl");
+    const lines = Array.from({ length: 16 }, (_, index) => {
+      const record = Buffer.from(
+        JSON.stringify({ id: `case-${index}`, input: index, expected: index }),
+      );
+      return Buffer.concat([
+        record,
+        Buffer.alloc(65_535 - record.byteLength, 0x20),
+        Buffer.from("\n"),
+      ]);
+    });
+    const atLimit = Buffer.concat(lines);
+    expect(atLimit.byteLength).toBe(V1_INPUT_LIMITS.caseFileBytes);
     await writeFile(casesPath, atLimit);
 
     const accepted = await loadEvaluationCases(casesPath);
@@ -675,28 +791,34 @@ describe("case loader", () => {
 
   test("accepts the case-count limit and rejects one case over", async () => {
     const root = await temporaryDirectory("reynard-case-count-");
-    const casesPath = join(root, "cases.json");
+    const casesPath = join(root, "cases.jsonl");
     const cases = Array.from({ length: V1_INPUT_LIMITS.caseCount }, (_, index) => ({
       id: `case-${index}`,
       input: index,
       expected: index,
     }));
-    await writeFile(casesPath, JSON.stringify(cases));
+    await writeFile(
+      casesPath,
+      `${cases.map((value) => JSON.stringify(value)).join("\n")}\n`,
+    );
 
     const accepted = await loadEvaluationCases(casesPath);
 
     expect(accepted.ok).toBe(true);
     cases.push({ id: "case-extra", input: 0, expected: 0 });
-    await writeFile(casesPath, JSON.stringify(cases));
+    await writeFile(
+      casesPath,
+      `${cases.map((value) => JSON.stringify(value)).join("\n")}\n`,
+    );
 
     const rejected = await loadEvaluationCases(casesPath);
 
     expect(rejected.ok).toBe(false);
   });
 
-  test("accepts the per-case byte limit and rejects one byte over", async () => {
+  test("accepts the per-line byte limit and rejects one byte over", async () => {
     const root = await temporaryDirectory("reynard-case-size-");
-    const casesPath = join(root, "cases.json");
+    const casesPath = join(root, "cases.jsonl");
     const baseCase = { id: "case-1", input: "", expected: null };
     const baseBytes = Buffer.byteLength(canonicalJson(baseCase));
     const atLimitCase = {
@@ -706,14 +828,16 @@ describe("case loader", () => {
     expect(Buffer.byteLength(canonicalJson(atLimitCase))).toBe(
       V1_INPUT_LIMITS.caseBytes,
     );
-    await writeFile(casesPath, JSON.stringify([atLimitCase]));
+    const atLimitLine = JSON.stringify(atLimitCase);
+    expect(Buffer.byteLength(atLimitLine)).toBe(V1_INPUT_LIMITS.caseBytes);
+    await writeFile(casesPath, `${atLimitLine}\n`);
 
     const accepted = await loadEvaluationCases(casesPath);
 
     expect(accepted.ok).toBe(true);
     await writeFile(
       casesPath,
-      JSON.stringify([{ ...atLimitCase, input: `${atLimitCase.input}x` }]),
+      `${JSON.stringify({ ...atLimitCase, input: `${atLimitCase.input}x` })}\n`,
     );
 
     const rejected = await loadEvaluationCases(casesPath);
@@ -723,28 +847,26 @@ describe("case loader", () => {
 
   test("retains the single-read bytes, digest, cases, and requests after the file mutates", async () => {
     const root = await temporaryDirectory("reynard-case-snapshot-");
-    const casesPath = join(root, "cases.json");
-    const originalBytes = Buffer.from(
-      JSON.stringify([
-        {
-          id: "original",
-          input: { prompt: "safe" },
-          expected: { private: "golden" },
-        },
-      ]),
-    );
+    const casesPath = join(root, "cases.jsonl");
+    const originalText = `${JSON.stringify({
+      id: "original",
+      input: { prompt: "safe" },
+      expected: { private: "golden" },
+    })}\n`;
+    const originalBytes = Buffer.from(originalText);
     await writeFile(casesPath, originalBytes);
     const loaded = await loadEvaluationCases(casesPath);
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     await writeFile(
       casesPath,
-      JSON.stringify([{ id: "mutated", input: "bad", expected: "bad" }]),
+      `${JSON.stringify({ id: "mutated", input: "bad", expected: "bad" })}\n`,
     );
 
     const requests = createCandidateRequests(loaded.value.cases, 42);
 
     expect(loaded.value.digest).toBe(sha256(originalBytes));
+    expect(loaded.value.rawText).toBe(originalText);
     expect(loaded.value.cases).toEqual([
       {
         id: "original",

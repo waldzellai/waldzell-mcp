@@ -175,6 +175,29 @@ describe("artifact schemas", () => {
     ).toBe(false);
   });
 
+  it("accepts only normalized V1 protocol error codes", () => {
+    const trace = {
+      schemaVersion: 1,
+      runId: DIGEST_A,
+      ordinal: 0,
+      caseId: "case-1",
+      requestDigest: DIGEST_B,
+      exitCode: 0,
+      timedOut: false,
+      protocolResult: { ok: false, error: "invalid JSON output" },
+      stderr: "",
+      durationMillis: 12,
+    } as const;
+
+    expect(TraceRecordSchema.parse(trace)).toEqual(trace);
+    expect(
+      TraceRecordSchema.safeParse({
+        ...trace,
+        protocolResult: { ok: false, error: "/private/host/path" },
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts a valid result artifact", () => {
     const artifact = {
       schemaVersion: 1,

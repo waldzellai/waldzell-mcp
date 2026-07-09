@@ -1,20 +1,17 @@
 import { constants, open } from "node:fs/promises";
 import { resolve } from "node:path";
+import { TextDecoder } from "node:util";
 
-import { canonicalJson, sha256 } from "./canonical-json.js";
+import { sha256 } from "./canonical-json.js";
 import {
   CandidateRequestSchema,
   EvaluationCaseSchema,
   V1_INPUT_LIMITS,
   type CandidateRequest,
   type EvaluationCase,
+  type LoadedEvaluationCases,
 } from "./contracts.js";
 import type { Result } from "./errors.js";
-
-export interface LoadedEvaluationCases {
-  readonly cases: readonly EvaluationCase[];
-  readonly digest: `sha256:${string}`;
-}
 
 function invalidInput<T>(message: string): Result<T> {
   return { ok: false, error: { _tag: "InvalidInput", message } };
@@ -74,39 +71,79 @@ export async function loadEvaluationCases(
 ): Promise<Result<LoadedEvaluationCases>> {
   try {
     const bytes = await readCaseFileOnce(caseFilePath);
-    const decoded: unknown = JSON.parse(bytes.toString("utf8"));
-    if (!Array.isArray(decoded)) {
-      return invalidInput("Case file must contain a JSON array");
-    }
-    if (decoded.length > V1_INPUT_LIMITS.caseCount) {
+    const rawText = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    if (!Buffer.from(rawText, "utf8").equals(bytes)) {
       return invalidInput(
-        `Case count exceeds ${V1_INPUT_LIMITS.caseCount}`,
+        "Case file must be canonical UTF-8 without a byte-order mark",
       );
     }
-    const cases: EvaluationCase[] = [];
-    for (const [index, value] of decoded.entries()) {
-      const parsed = EvaluationCaseSchema.safeParse(value);
-      if (!parsed.success) {
-        return invalidInput(
-          `Invalid case at index ${index}: ${parsed.error.issues.map((issue) => issue.message).join("; ")}`,
-        );
-      }
-      const caseByteLength = Buffer.byteLength(canonicalJson(parsed.data));
-      if (caseByteLength > V1_INPUT_LIMITS.caseBytes) {
-        return invalidInput(
-          `Case at index ${index} exceeds ${V1_INPUT_LIMITS.caseBytes} bytes`,
-        );
-      }
-      cases.push({
-        id: parsed.data.id,
-        input: parsed.data.input,
-        expected: parsed.data.expected,
-      });
-    }
-    return { ok: true, value: { cases, digest: sha256(bytes) } };
+    return parseEvaluationCasesText(rawText);
   } catch (error) {
     return invalidInput(`Could not load cases: ${errorMessage(error)}`);
   }
+}
+
+export function parseEvaluationCasesText(
+  rawText: string,
+): Result<LoadedEvaluationCases> {
+  const bytes = Buffer.from(rawText, "utf8");
+  const roundTripped = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  if (roundTripped !== rawText) {
+    return invalidInput("Case text must round-trip exactly through UTF-8");
+  }
+  if (bytes.byteLength === 0) {
+    return invalidInput("Case file cannot be empty");
+  }
+  if (bytes.byteLength > V1_INPUT_LIMITS.caseFileBytes) {
+    return invalidInput(
+      `Case file exceeds ${V1_INPUT_LIMITS.caseFileBytes} bytes`,
+    );
+  }
+
+  const lines = rawText.split("\n");
+  if (rawText.endsWith("\n")) lines.pop();
+  if (lines.length > V1_INPUT_LIMITS.caseCount) {
+    return invalidInput(`Case count exceeds ${V1_INPUT_LIMITS.caseCount}`);
+  }
+
+  const cases: EvaluationCase[] = [];
+  const caseIds = new Set<string>();
+  for (const [index, line] of lines.entries()) {
+    const lineNumber = index + 1;
+    const lineBytes = Buffer.byteLength(line, "utf8");
+    if (lineBytes > V1_INPUT_LIMITS.caseBytes) {
+      return invalidInput(
+        `Case at line ${lineNumber} exceeds ${V1_INPUT_LIMITS.caseBytes} bytes`,
+      );
+    }
+    let decoded: unknown;
+    try {
+      decoded = JSON.parse(line);
+    } catch {
+      return invalidInput(`Malformed JSON at line ${lineNumber}`);
+    }
+    const parsed = EvaluationCaseSchema.safeParse(decoded);
+    if (!parsed.success) {
+      return invalidInput(
+        `Invalid case at line ${lineNumber}: ${parsed.error.issues.map((issue) => issue.message).join("; ")}`,
+      );
+    }
+    if (caseIds.has(parsed.data.id)) {
+      return invalidInput(
+        `Duplicate case ID at line ${lineNumber}: ${parsed.data.id}`,
+      );
+    }
+    caseIds.add(parsed.data.id);
+    cases.push({
+      id: parsed.data.id,
+      input: parsed.data.input,
+      expected: parsed.data.expected,
+    });
+  }
+  return {
+    ok: true,
+    value: { rawText, cases, digest: sha256(bytes) },
+  };
 }
 
 export function createCandidateRequests(
