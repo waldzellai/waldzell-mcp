@@ -1,22 +1,35 @@
 {
-  "name": "reynard-forge",
+  "name": "reynard-reliability-lab",
+  "version": "0.1.0",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20"
+  },
   "workspaces": [
-    "packages/*"
+    "packages/agent-reliability-lab"
   ],
   "scripts": {
-    "build": "pnpm -r run build",
-    "dev:cli": "pnpm --filter forge-cli run dev",
-    "lint": "eslint . --ext .ts,.tsx",
-    "typecheck": "tsc -b",
-    "test": "echo \"(TODO) add tests\" && exit 0"
+    "build": "pnpm --filter @waldzellai/agent-reliability-lab run build",
+    "test:unit": "vitest run packages/agent-reliability-lab/tests/unit",
+    "test": "pnpm run test:unit && pnpm run test:integration",
+    "test:integration": "vitest run packages/agent-reliability-lab/tests/integration",
+    "typecheck": "pnpm --filter @waldzellai/agent-reliability-lab run typecheck",
+    "lint": "eslint eslint.config.js vitest.config.ts \"packages/agent-reliability-lab/**/*.ts\"",
+    "verify": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test:unit && pnpm run test:integration && pnpm run guard:retirement",
+    "lab": "node packages/agent-reliability-lab/dist/cli.js",
+    "guard:retired-basenames": "sh -c 'retired_dir=agentic-scripts; git -C .. grep -n -E \"(code-review-advanced\\.sh|intelligent-debugger\\.sh|adas-meta-agent\\.sh|memory-manager\\.sh|performance-driven-auto-tuning\\.sh)\" -- . \":(exclude)$retired_dir/README.md\" \":(exclude)reynard/RELIABILITY_LAB_PLAN.md\" \":(exclude)reynard/docs/provenance.md\"; test $? -eq 1'",
+    "guard:retired-path": "sh -c 'retired_dir=agentic-scripts; git -C .. grep -n -F \"$retired_dir/\" -- . \":(exclude)$retired_dir/README.md\" \":(exclude)reynard/RELIABILITY_LAB_PLAN.md\" \":(exclude)reynard/docs/provenance.md\"; test $? -eq 1'",
+    "guard:retirement": "pnpm run guard:retired-basenames && pnpm run guard:retired-path"
   },
   "devDependencies": {
-    "typescript": "^5.5.4",
+    "@eslint/js": "^9.5.0",
     "@types/node": "^20.11.30",
-    "eslint": "^9.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0"
+    "eslint": "^9.5.0",
+    "typescript": "^5.5.4",
+    "vitest": "1.2.2"
   }
 }

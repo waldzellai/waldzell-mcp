@@ -1,8 +1,0 @@
-{
-  "name": "forge-sandbox",
-  "version": "0.0.1",
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": { "build": "tsc -p tsconfig.json" }
-}
