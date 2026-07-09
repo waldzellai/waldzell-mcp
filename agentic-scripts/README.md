@@ -2,14 +2,15 @@
 
 > **ARCHIVED — DO NOT RUN**
 >
-> The Bash programs in this directory are an unsupported 2025 experiment. They
-> can emit fabricated success reports, transmit broad repository or host data,
-> mutate files, and execute model-generated shell commands. They are retained
-> temporarily only while the retirement plan is reviewed.
+> The Bash programs formerly stored in this directory were an unsupported 2025
+> experiment. They could emit fabricated success reports, transmit broad
+> repository or host data, mutate files, and execute model-generated shell
+> commands. Their executable sources have been removed from the supported tree
+> and remain available only through Git history.
 
 The scheduled and manually dispatched GitHub Actions workflow that referenced
-these programs was removed on 2026-07-09. No script in this directory is a
-supported development, debugging, security, memory, or optimization tool.
+these programs was removed on 2026-07-09. This directory intentionally contains
+no executable development, debugging, security, memory, or optimization tool.
 
 ## Decision
 
@@ -18,8 +19,8 @@ supported development, debugging, security, memory, or optimization tool.
   access.
 - Do not repair them incrementally.
 - Use Git history, beginning with commit `d9d75bb`, as the source archive.
-- Review [the Reynard Reliability Lab plan](../reynard/RELIABILITY_LAB_PLAN.md)
-  before removing the files or beginning replacement work.
+- Follow [the approved Reynard Reliability Lab plan](../reynard/RELIABILITY_LAB_PLAN.md)
+  for replacement work.
 
 ## Why this was retired
 
@@ -46,5 +47,5 @@ remain out of scope until that acceptance path is real.
 - `1937631` introduced the original Reynard Forge scaffold.
 - `41fb5ab` expanded Reynard while retaining simulated verification paths.
 
-Git preserves the original executable sources and their history; keeping them
-active is not required for archaeology.
+Git preserves the removed executable sources and their history; restoring them
+would require a new, explicit security decision.
