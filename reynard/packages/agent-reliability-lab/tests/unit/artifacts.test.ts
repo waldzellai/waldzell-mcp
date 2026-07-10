@@ -17,7 +17,6 @@ import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
 import {
-  type ArtifactRecoveryOptions,
   readArtifactBundle,
   recoverArtifactPublishLocks,
   recoverArtifactPublishLocksInternal,
@@ -591,7 +590,7 @@ describe("artifact bundles", () => {
     const runsDirectory = join(root, "runs");
     const input = withRunsDirectory(makeArtifactInput(), runsDirectory);
 
-    expect(await writeArtifactBundle(input, options)).toEqual({
+    expect(await writeArtifactBundleInternal(input, options)).toEqual({
       ok: false,
       error: expect.objectContaining({ _tag: "ArtifactWriteFailed" }),
     });
@@ -694,7 +693,7 @@ describe("artifact bundles", () => {
         runsDirectory,
       );
 
-      expect(await writeArtifactBundle(mismatch, options)).toEqual({
+      expect(await writeArtifactBundleInternal(mismatch, options)).toEqual({
         ok: false,
         error: expect.objectContaining({ _tag: "ArtifactWriteFailed" }),
       });
@@ -731,7 +730,7 @@ describe("artifact bundles", () => {
 
     const results = await Promise.all(
       inputs.map((input) =>
-        writeArtifactBundle(input, { io: { writeFile: racingWrite } }),
+        writeArtifactBundleInternal(input, { io: { writeFile: racingWrite } }),
       ),
     );
 
@@ -779,7 +778,7 @@ describe("artifact bundles", () => {
       markPublished();
       await winnerGate;
     };
-    const winnerPromise = writeArtifactBundle(passing, {
+    const winnerPromise = writeArtifactBundleInternal(passing, {
       io: { rename: gatedWinnerRename },
     });
     await published;
@@ -793,7 +792,7 @@ describe("artifact bundles", () => {
       await writeFile(path, contents, { flag: "wx", mode: 0o600 });
       if (path.endsWith("result.json")) markLoserStaged();
     };
-    const loserPromise = writeArtifactBundle(failing, {
+    const loserPromise = writeArtifactBundleInternal(failing, {
       io: { writeFile: loserWrite },
     });
     await loserStaged;
@@ -828,12 +827,12 @@ describe("artifact bundles", () => {
       await renameGate;
       await rename(source, target);
     };
-    const firstPromise = writeArtifactBundle(input, {
+    const firstPromise = writeArtifactBundleInternal(input, {
       io: { rename: blockedRename },
     });
     await renameEntered;
 
-    const contended = await writeArtifactBundle(input, {
+    const contended = await writeArtifactBundleInternal(input, {
       lockTimeoutMillis: 20,
       lockRetryMillis: 1,
     });
@@ -867,7 +866,7 @@ describe("artifact bundles", () => {
       }),
     );
 
-    const recovered = await recoverArtifactPublishLocks(runsDirectory, {
+    const recovered = await recoverArtifactPublishLocksInternal(runsDirectory, {
       isProcessAlive: () => false,
     });
     const written = await writeArtifactBundle(input);
@@ -905,7 +904,7 @@ describe("artifact bundles", () => {
       ),
     );
 
-    const recovered = await recoverArtifactPublishLocks(runsDirectory, {
+    const recovered = await recoverArtifactPublishLocksInternal(runsDirectory, {
       isProcessAlive: (pid) => pid === process.pid || pid === 123,
     });
 
@@ -933,12 +932,13 @@ describe("artifact bundles", () => {
           bypassCalled = true;
         },
       },
-    } as ArtifactRecoveryOptions;
+    };
 
-    const recovered = await recoverArtifactPublishLocks(
-      runsDirectory,
-      untypedOptions,
-    );
+    const publicRecovery = recoverArtifactPublishLocks as unknown as (
+      directory: string,
+      options: unknown,
+    ) => ReturnType<typeof recoverArtifactPublishLocks>;
+    const recovered = await publicRecovery(runsDirectory, untypedOptions);
 
     expect(recovered).toEqual({ ok: true, value: 1 });
     expect(bypassCalled).toBe(false);
@@ -1019,7 +1019,9 @@ describe("artifact bundles", () => {
       }
       await writeFile(path, contents, { flag: "wx", mode: 0o600 });
     };
-    const writer = writeArtifactBundle(input, { io: { writeFile: blockedWrite } });
+    const writer = writeArtifactBundleInternal(input, {
+      io: { writeFile: blockedWrite },
+    });
     await stagingReady;
     const stagingNames = (await readdir(runsDirectory)).filter((name) =>
       name.includes(".staging-"),
@@ -1033,7 +1035,7 @@ describe("artifact bundles", () => {
       ),
     ]);
     expect(
-      await recoverArtifactPublishLocks(runsDirectory, {
+      await recoverArtifactPublishLocksInternal(runsDirectory, {
         isProcessAlive: () => true,
       }),
     ).toEqual({ ok: true, value: 0 });
@@ -1060,7 +1062,7 @@ describe("artifact bundles", () => {
       else await symlink(external, stage);
 
       expect(
-        await recoverArtifactPublishLocks(runsDirectory, {
+        await recoverArtifactPublishLocksInternal(runsDirectory, {
           isProcessAlive: () => false,
         }),
       ).toEqual({
@@ -1076,7 +1078,7 @@ describe("artifact bundles", () => {
     const runsDirectory = join(root, "runs");
     const input = withRunsDirectory(makeArtifactInput(), runsDirectory);
 
-    const written = await writeArtifactBundle(input, {
+    const written = await writeArtifactBundleInternal(input, {
       releasePublishLock: async () => {
         throw new Error("injected release failure");
       },

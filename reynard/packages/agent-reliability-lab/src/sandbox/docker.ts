@@ -697,7 +697,7 @@ export class DockerSandbox implements CandidateRunner {
   }
 }
 
-export function createDockerSandbox(
+export function createDockerSandboxInternal(
   options: DockerSandboxOptions = {},
 ): Result<DockerSandbox> {
   try {
@@ -705,4 +705,8 @@ export function createDockerSandbox(
   } catch (error) {
     return sandboxUnavailable(errorMessage(error));
   }
+}
+
+export function createDockerSandbox(): Result<DockerSandbox> {
+  return createDockerSandboxInternal();
 }

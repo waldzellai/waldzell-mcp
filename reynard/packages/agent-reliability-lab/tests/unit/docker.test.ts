@@ -29,7 +29,7 @@ import {
 import { createCandidateRequests } from "../../src/runner.js";
 import {
   DockerSandbox,
-  createDockerSandbox,
+  createDockerSandboxInternal,
   dockerExecutableForPlatform,
   type ProcessExecutor,
   type ProcessInvocation,
@@ -56,7 +56,7 @@ describe("fixed Docker executable selection", () => {
   });
 
   test("maps an unsupported platform to typed sandbox unavailability", () => {
-    expect(createDockerSandbox({ platform: "win32" })).toEqual({
+    expect(createDockerSandboxInternal({ platform: "win32" })).toEqual({
       ok: false,
       error: {
         _tag: "SandboxUnavailable",

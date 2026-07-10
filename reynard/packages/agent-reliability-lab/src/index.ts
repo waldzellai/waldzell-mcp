@@ -5,9 +5,6 @@ export {
   writeArtifacts,
 } from "./artifacts.js";
 export type {
-  ArtifactIo,
-  ArtifactRecoveryOptions,
-  ArtifactWriteOptions,
   ArtifactWriteResult,
   ValidatedArtifactBundle,
 } from "./artifacts.js";
@@ -28,4 +25,4 @@ export * from "./errors.js";
 export * from "./evaluator.js";
 export * from "./manifest.js";
 export * from "./runner.js";
-export * from "./sandbox/docker.js";
+export { createDockerSandbox } from "./sandbox/docker.js";

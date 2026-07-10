@@ -11,9 +11,13 @@ const reynardRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 describe("Reynard workspace structure", () => {
   it("keeps snapshot cleanup internal to the package", () => {
     expect("cleanupCandidateSnapshot" in publicApi).toBe(false);
+    expect("DockerSandbox" in publicApi).toBe(false);
+    expect("dockerExecutableForPlatform" in publicApi).toBe(false);
     expect("loadCandidateSnapshotInternal" in publicApi).toBe(false);
     expect("recoverArtifactPublishLocksInternal" in publicApi).toBe(false);
     expect("writeArtifactBundleInternal" in publicApi).toBe(false);
+    expect("createDockerSandboxInternal" in publicApi).toBe(false);
+    expect("createDockerSandbox" in publicApi).toBe(true);
   });
 
   it("keeps only the supported reliability-lab workspace package", async () => {

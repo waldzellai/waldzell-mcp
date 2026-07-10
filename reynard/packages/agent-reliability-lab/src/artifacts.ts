@@ -392,12 +392,8 @@ export async function recoverArtifactPublishLocksInternal(
 
 export async function recoverArtifactPublishLocks(
   runsDirectory: string,
-  options: ArtifactRecoveryOptions = {},
 ): Promise<Result<number>> {
-  return recoverArtifactPublishLocksInternal(runsDirectory, {
-    staleMalformedLockMillis: options.staleMalformedLockMillis,
-    isProcessAlive: options.isProcessAlive,
-  });
+  return recoverArtifactPublishLocksInternal(runsDirectory);
 }
 
 function executionByCaseId(
@@ -1002,14 +998,8 @@ export async function writeArtifactBundleInternal(
 
 export async function writeArtifactBundle(
   input: ArtifactWriteInput,
-  options: ArtifactWriteOptions = {},
 ): Promise<Result<ArtifactWriteResult>> {
-  return writeArtifactBundleInternal(input, {
-    io: options.io,
-    releasePublishLock: options.releasePublishLock,
-    lockTimeoutMillis: options.lockTimeoutMillis,
-    lockRetryMillis: options.lockRetryMillis,
-  });
+  return writeArtifactBundleInternal(input);
 }
 
 export const writeArtifacts = writeArtifactBundle;
