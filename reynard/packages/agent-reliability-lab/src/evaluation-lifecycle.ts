@@ -13,15 +13,19 @@ export type CandidateSnapshotCleanup = (
   snapshot: CandidateSnapshot,
 ) => Promise<void>;
 
-export async function finalizeEvaluation<T>(
+export interface NamedCleanup {
+  readonly phase: string;
+  readonly cleanup: () => Promise<void>;
+}
+
+export async function finalizeResult<T>(
   primary: Result<T>,
-  snapshots: readonly NamedCandidateSnapshot[],
-  cleanup: CandidateSnapshotCleanup = cleanupCandidateSnapshot,
+  cleanups: readonly NamedCleanup[],
 ): Promise<Result<T>> {
   const failures: string[] = [];
-  for (const { phase, snapshot } of snapshots) {
+  for (const { phase, cleanup } of cleanups) {
     try {
-      await cleanup(snapshot);
+      await cleanup();
     } catch (error) {
       failures.push(
         `${phase}: ${error instanceof Error ? error.message : String(error)}`,
@@ -29,7 +33,7 @@ export async function finalizeEvaluation<T>(
     }
   }
   if (failures.length === 0) return primary;
-  const cleanupMessage = `Candidate snapshot cleanup failed during finalization: ${failures.join("; ")}`;
+  const cleanupMessage = `Cleanup failed during finalization: ${failures.join("; ")}`;
   if (primary.ok) {
     return {
       ok: false,
@@ -43,4 +47,18 @@ export async function finalizeEvaluation<T>(
       message: `${primary.error.message}; ${cleanupMessage} after ${primary.error._tag}`,
     },
   };
+}
+
+export async function finalizeEvaluation<T>(
+  primary: Result<T>,
+  snapshots: readonly NamedCandidateSnapshot[],
+  cleanup: CandidateSnapshotCleanup = cleanupCandidateSnapshot,
+): Promise<Result<T>> {
+  return finalizeResult(
+    primary,
+    snapshots.map(({ phase, snapshot }) => ({
+      phase,
+      cleanup: async () => cleanup(snapshot),
+    })),
+  );
 }

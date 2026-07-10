@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, readFile, readdir, rm } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -24,6 +24,12 @@ import {
   verifyCandidateSnapshotOwnership,
 } from "../candidate.js";
 import type { Result } from "../errors.js";
+import { finalizeResult } from "../evaluation-lifecycle.js";
+import {
+  directoryIdentity,
+  normalizePrivateDirectory,
+  removeOwnedDirectory,
+} from "../filesystem.js";
 
 export interface ProcessInvocation {
   readonly executable: FixedDockerExecutable;
@@ -455,6 +461,9 @@ export class DockerSandbox implements CandidateRunner {
           }
           throw error;
         }
+        if (namespace === "staging") {
+          await normalizePrivateDirectory(directory, { rejectWritable: false });
+        }
         for (const name of names) {
           const ownerPid = labOwnerPid(name);
           const sameProcessInactiveCidfile =
@@ -467,7 +476,21 @@ export class DockerSandbox implements CandidateRunner {
           ) {
             continue;
           }
-          await rm(join(directory, name), { recursive: true, force: true });
+          const stalePath = join(directory, name);
+          if (namespace === "cidfiles") {
+            await rm(stalePath, { force: true });
+            continue;
+          }
+          const staleMetadata = await lstat(stalePath);
+          await removeOwnedDirectory(
+            stalePath,
+            directory,
+            directoryIdentity(staleMetadata),
+            {
+              recoverableName: (token) =>
+                `${LAB_NAMESPACE}-p${ownerPid}-quarantine-${token}`,
+            },
+          );
         }
       }
       this.recoveryComplete = true;
@@ -665,17 +688,12 @@ export class DockerSandbox implements CandidateRunner {
       requests,
       policy,
     );
-    try {
-      await cleanupCandidateSnapshot(candidate);
-      return result;
-    } catch (error) {
-      const message = `Candidate staging cleanup failed: ${errorMessage(error)}`;
-      return result.ok ||
-        result.error._tag === "ExecutionFailed" ||
-        result.error._tag === "EvaluationFailed"
-        ? executionFailed(message)
-        : sandboxUnavailable(message);
-    }
+    return finalizeResult(result, [
+      {
+        phase: "candidate snapshot cleanup",
+        cleanup: async () => cleanupCandidateSnapshot(candidate),
+      },
+    ]);
   }
 }
 

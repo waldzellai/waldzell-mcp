@@ -1,3 +1,4 @@
+import { chmodSync } from "node:fs";
 import {
   chmod,
   mkdtemp,
@@ -202,6 +203,97 @@ async function makeCandidate(
 }
 
 describe("locked-down Docker runner", () => {
+  test("maps primary success plus snapshot cleanup failure to SandboxUnavailable", async () => {
+    const root = await temporaryDirectory("reynard-cleanup-after-success-");
+    const stateRoot = join(root, "state");
+    const stagingRoot = join(stateRoot, "staging");
+    const candidate = await makeCandidate(root, undefined, stagingRoot);
+    const sandbox = new DockerSandbox({
+      executor: new RecordingExecutor((invocation) => {
+        if (invocation.args[0] === "run") {
+          const outcome = successfulOutcome({ stdout: '{"ok":true}\n' });
+          Object.defineProperty(outcome, "stdout", {
+            enumerable: true,
+            get: () => {
+              // The runner reads stdout only after its post-execution snapshot
+              // verification, giving finalization the first view of this fault.
+              chmodSync(stagingRoot, 0o755);
+              return '{"ok":true}\n';
+            },
+          });
+          return outcome;
+        }
+        return defaultResponse(invocation);
+      }),
+      stateRoot,
+    });
+
+    try {
+      const result = await sandbox.run(
+        candidate,
+        [{ schemaVersion: 1, caseId: "case-1", seed: 0, input: null }],
+        V1_SANDBOX_POLICY,
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        error: {
+          _tag: "SandboxUnavailable",
+          message: expect.stringMatching(
+            /candidate snapshot cleanup.*staging root.*owner-controlled/i,
+          ),
+        },
+      });
+    } finally {
+      await chmod(stagingRoot, 0o700);
+      await cleanupCandidateSnapshot(candidate);
+      await expect(stat(candidate.snapshotPath)).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+    }
+  });
+
+  test("preserves primary execution failure when snapshot cleanup also fails", async () => {
+    const root = await temporaryDirectory("reynard-cleanup-after-failure-");
+    const stateRoot = join(root, "state");
+    const stagingRoot = join(stateRoot, "staging");
+    const candidate = await makeCandidate(root, undefined, stagingRoot);
+    const sandbox = new DockerSandbox({
+      executor: new RecordingExecutor(async (invocation) => {
+        if (invocation.args[0] === "run") {
+          await chmod(stagingRoot, 0o755);
+          return successfulOutcome({ exitCode: 17 });
+        }
+        return defaultResponse(invocation);
+      }),
+      stateRoot,
+    });
+
+    try {
+      const result = await sandbox.run(
+        candidate,
+        [{ schemaVersion: 1, caseId: "case-1", seed: 0, input: null }],
+        V1_SANDBOX_POLICY,
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        error: {
+          _tag: "ExecutionFailed",
+          message: expect.stringMatching(
+            /candidate execution failed.*candidate snapshot cleanup.*staging root.*owner-controlled.*ExecutionFailed/i,
+          ),
+        },
+      });
+    } finally {
+      await chmod(stagingRoot, 0o700);
+      await cleanupCandidateSnapshot(candidate);
+      await expect(stat(candidate.snapshotPath)).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+    }
+  });
+
   test.each(["policy", "preflight", "execution"] as const)(
     "rejects a forged snapshot before %s and preserves the foreign path",
     async (route) => {
