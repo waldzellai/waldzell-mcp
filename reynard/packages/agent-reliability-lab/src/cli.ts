@@ -9,7 +9,6 @@ import {
   writeArtifactBundle,
 } from "./artifacts.js";
 import {
-  cleanupCandidateSnapshot,
   loadCandidateSnapshot,
   resolveCandidateSnapshot,
   type CandidateSnapshot,
@@ -21,6 +20,7 @@ import {
 } from "./contracts.js";
 import type { LabError, Result } from "./errors.js";
 import { evaluateExecutions } from "./evaluator.js";
+import { finalizeEvaluation } from "./evaluation-lifecycle.js";
 import { createRunManifest, resolveEvaluatorIdentity } from "./manifest.js";
 import { createCandidateRequests, loadEvaluationCases } from "./runner.js";
 import { createDockerSandbox } from "./sandbox/docker.js";
@@ -104,46 +104,6 @@ function parseCliOptions(args: readonly string[]): Result<CliOptions> {
 interface EvaluationSnapshots {
   baseline?: CandidateSnapshot;
   candidate?: CandidateSnapshot;
-}
-
-async function cleanupSnapshots(
-  snapshots: EvaluationSnapshots,
-): Promise<Result<void>> {
-  const failures: string[] = [];
-  for (const [phase, snapshot] of Object.entries(snapshots)) {
-    if (snapshot === undefined) continue;
-    try {
-      await cleanupCandidateSnapshot(snapshot);
-    } catch (error) {
-      failures.push(
-        `${phase}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
-  return failures.length === 0
-    ? { ok: true, value: undefined }
-    : {
-        ok: false,
-        error: {
-          _tag: "SandboxUnavailable",
-          message: `Candidate snapshot cleanup failed during finalization: ${failures.join("; ")}`,
-        },
-      };
-}
-
-function combineEvaluationAndCleanup<T>(
-  primary: Result<T>,
-  cleanup: Result<void>,
-): Result<T> {
-  if (cleanup.ok) return primary;
-  if (primary.ok) return cleanup;
-  return {
-    ok: false,
-    error: {
-      ...primary.error,
-      message: `${primary.error.message}; ${cleanup.error.message} after ${primary.error._tag}`,
-    },
-  };
 }
 
 async function evaluatePrimary(
@@ -317,8 +277,17 @@ async function evaluate(options: CliOptions): Promise<Result<CompletedEvaluation
       },
     };
   }
-  const cleanup = await cleanupSnapshots(snapshots);
-  return combineEvaluationAndCleanup(primary, cleanup);
+  return finalizeEvaluation(
+    primary,
+    [
+      ...(snapshots.baseline === undefined
+        ? []
+        : [{ phase: "baseline", snapshot: snapshots.baseline }]),
+      ...(snapshots.candidate === undefined
+        ? []
+        : [{ phase: "candidate", snapshot: snapshots.candidate }]),
+    ],
+  );
 }
 
 function exitCode(error: LabError): number {
