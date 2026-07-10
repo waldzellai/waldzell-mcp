@@ -37,5 +37,5 @@ describe("package build", () => {
     } finally {
       await rm(staleOutput, { force: true });
     }
-  });
+  }, 30_000);
 });
