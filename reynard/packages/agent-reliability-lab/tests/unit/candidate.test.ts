@@ -22,6 +22,7 @@ import { canonicalJson, sha256 } from "../../src/canonical-json.js";
 import {
   cleanupCandidateSnapshot,
   loadCandidateSnapshot,
+  loadCandidateSnapshotInternal,
   type CandidateSnapshot,
   verifyCandidateSnapshot,
 } from "../../src/candidate.js";
@@ -770,7 +771,7 @@ describe("candidate loader", () => {
     let originalSnapshot: string | undefined;
     const removedInodes: number[] = [];
 
-    const result = await loadCandidateSnapshot(definitionPath, {
+    const result = await loadCandidateSnapshotInternal(definitionPath, {
       stagingRoot,
       directoryOperations: {
         beforeRename: async () => {

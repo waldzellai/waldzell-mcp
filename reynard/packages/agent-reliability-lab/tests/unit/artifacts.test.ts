@@ -17,9 +17,12 @@ import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
 import {
+  type ArtifactRecoveryOptions,
   readArtifactBundle,
   recoverArtifactPublishLocks,
+  recoverArtifactPublishLocksInternal,
   writeArtifactBundle,
+  writeArtifactBundleInternal,
 } from "../../src/artifacts.js";
 import { canonicalJson, sha256 } from "../../src/canonical-json.js";
 import { compareEvaluations } from "../../src/compare.js";
@@ -606,7 +609,7 @@ describe("artifact bundles", () => {
     let originalStage: string | undefined;
     const removedInodes: number[] = [];
 
-    const result = await writeArtifactBundle(input, {
+    const result = await writeArtifactBundleInternal(input, {
       io: {
         writeFile: async () => {
           throw new Error("injected write failure");
@@ -914,6 +917,34 @@ describe("artifact bundles", () => {
     expect((await stat(finalBundle)).isDirectory()).toBe(true);
   });
 
+  test("ignores an untyped cleanup override at the public recovery boundary", async () => {
+    const root = await temporaryDirectory("reynard-artifact-public-options-");
+    const runsDirectory = join(root, "runs");
+    const stage = join(
+      runsDirectory,
+      `.${digest("5")}.staging-p999999999-00000000-0000-4000-8000-000000000005`,
+    );
+    await mkdir(stage, { recursive: true, mode: 0o700 });
+    let bypassCalled = false;
+    const untypedOptions = {
+      isProcessAlive: () => false,
+      directoryOperations: {
+        remove: async () => {
+          bypassCalled = true;
+        },
+      },
+    } as ArtifactRecoveryOptions;
+
+    const recovered = await recoverArtifactPublishLocks(
+      runsDirectory,
+      untypedOptions,
+    );
+
+    expect(recovered).toEqual({ ok: true, value: 1 });
+    expect(bypassCalled).toBe(false);
+    await expect(stat(stage)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   test("treats a missing fresh-checkout runs directory as no recovery work", async () => {
     const root = await temporaryDirectory("reynard-artifact-missing-runs-");
 
@@ -935,7 +966,7 @@ describe("artifact bundles", () => {
     const removedInodes: number[] = [];
     await mkdir(stage, { mode: 0o700 });
 
-    const recovered = await recoverArtifactPublishLocks(runsDirectory, {
+    const recovered = await recoverArtifactPublishLocksInternal(runsDirectory, {
       isProcessAlive: () => false,
       directoryOperations: {
         beforeRename: async () => {

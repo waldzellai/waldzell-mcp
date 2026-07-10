@@ -1,4 +1,16 @@
-export * from "./artifacts.js";
+export {
+  readArtifactBundle,
+  recoverArtifactPublishLocks,
+  writeArtifactBundle,
+  writeArtifacts,
+} from "./artifacts.js";
+export type {
+  ArtifactIo,
+  ArtifactRecoveryOptions,
+  ArtifactWriteOptions,
+  ArtifactWriteResult,
+  ValidatedArtifactBundle,
+} from "./artifacts.js";
 export {
   LAB_NAMESPACE,
   defaultLabStateRoot,

@@ -54,6 +54,9 @@ export interface CandidateSnapshot {
 
 export interface CandidateSnapshotOptions {
   readonly stagingRoot?: string;
+}
+
+interface CandidateSnapshotInternalOptions extends CandidateSnapshotOptions {
   readonly directoryOperations?: QuarantineRemovalOptions;
 }
 
@@ -384,9 +387,9 @@ export async function resolveCandidateSnapshot(
   return { ok: true, value: candidate };
 }
 
-export async function loadCandidateSnapshot(
+export async function loadCandidateSnapshotInternal(
   definitionPath: string,
-  options: CandidateSnapshotOptions = {},
+  options: CandidateSnapshotInternalOptions = {},
 ): Promise<Result<CandidateSnapshot>> {
   let snapshotPath: string | undefined;
   let snapshotIdentity: DirectoryIdentity | undefined;
@@ -513,4 +516,13 @@ export async function loadCandidateSnapshot(
     }
     return invalidInput(`Could not load candidate: ${errorMessage(error)}`);
   }
+}
+
+export async function loadCandidateSnapshot(
+  definitionPath: string,
+  options: CandidateSnapshotOptions = {},
+): Promise<Result<CandidateSnapshot>> {
+  return loadCandidateSnapshotInternal(definitionPath, {
+    stagingRoot: options.stagingRoot,
+  });
 }

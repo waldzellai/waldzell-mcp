@@ -62,12 +62,18 @@ export interface ArtifactWriteOptions {
   readonly releasePublishLock?: (lockPath: string) => Promise<void>;
   readonly lockTimeoutMillis?: number;
   readonly lockRetryMillis?: number;
-  readonly directoryOperations?: QuarantineRemovalOptions;
 }
 
 export interface ArtifactRecoveryOptions {
   readonly staleMalformedLockMillis?: number;
   readonly isProcessAlive?: (pid: number) => boolean;
+}
+
+interface ArtifactWriteInternalOptions extends ArtifactWriteOptions {
+  readonly directoryOperations?: QuarantineRemovalOptions;
+}
+
+interface ArtifactRecoveryInternalOptions extends ArtifactRecoveryOptions {
   readonly directoryOperations?: QuarantineRemovalOptions;
 }
 
@@ -295,9 +301,9 @@ async function releasePublishLock(
  * Removes dead-owner publish locks and artifact staging directories during the
  * single-owner startup preflight. Active concurrent publishers remain intact.
  */
-export async function recoverArtifactPublishLocks(
+export async function recoverArtifactPublishLocksInternal(
   runsDirectory: string,
-  options: ArtifactRecoveryOptions = {},
+  options: ArtifactRecoveryInternalOptions = {},
 ): Promise<Result<number>> {
   const absoluteRunsDirectory = resolve(runsDirectory);
   const isProcessAlive = options.isProcessAlive ?? processIsAlive;
@@ -382,6 +388,16 @@ export async function recoverArtifactPublishLocks(
       `Could not recover artifact publish locks: ${errorMessage(error)}`,
     );
   }
+}
+
+export async function recoverArtifactPublishLocks(
+  runsDirectory: string,
+  options: ArtifactRecoveryOptions = {},
+): Promise<Result<number>> {
+  return recoverArtifactPublishLocksInternal(runsDirectory, {
+    staleMalformedLockMillis: options.staleMalformedLockMillis,
+    isProcessAlive: options.isProcessAlive,
+  });
 }
 
 function executionByCaseId(
@@ -861,9 +877,9 @@ async function compareExistingTarget(
   };
 }
 
-export async function writeArtifactBundle(
+export async function writeArtifactBundleInternal(
   input: ArtifactWriteInput,
-  options: ArtifactWriteOptions = {},
+  options: ArtifactWriteInternalOptions = {},
 ): Promise<Result<ArtifactWriteResult>> {
   const built = buildSerializedBundle(input);
   if (!built.ok) return built;
@@ -982,6 +998,18 @@ export async function writeArtifactBundle(
     ACTIVE_STAGING_TOKENS.delete(stagingToken);
   }
   return outcome;
+}
+
+export async function writeArtifactBundle(
+  input: ArtifactWriteInput,
+  options: ArtifactWriteOptions = {},
+): Promise<Result<ArtifactWriteResult>> {
+  return writeArtifactBundleInternal(input, {
+    io: options.io,
+    releasePublishLock: options.releasePublishLock,
+    lockTimeoutMillis: options.lockTimeoutMillis,
+    lockRetryMillis: options.lockRetryMillis,
+  });
 }
 
 export const writeArtifacts = writeArtifactBundle;

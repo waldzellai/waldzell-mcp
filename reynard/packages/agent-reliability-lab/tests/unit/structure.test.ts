@@ -11,6 +11,9 @@ const reynardRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 describe("Reynard workspace structure", () => {
   it("keeps snapshot cleanup internal to the package", () => {
     expect("cleanupCandidateSnapshot" in publicApi).toBe(false);
+    expect("loadCandidateSnapshotInternal" in publicApi).toBe(false);
+    expect("recoverArtifactPublishLocksInternal" in publicApi).toBe(false);
+    expect("writeArtifactBundleInternal" in publicApi).toBe(false);
   });
 
   it("keeps only the supported reliability-lab workspace package", async () => {
