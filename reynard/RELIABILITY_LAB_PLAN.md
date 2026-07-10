@@ -2,7 +2,7 @@
 title: "refactor: Retire agentic scripts and establish the Reynard Reliability Lab"
 type: refactor
 date: 2026-07-09
-status: fixes-in-progress
+status: implemented-local
 ---
 
 # Reynard Reliability Lab Retirement and Revival Plan
@@ -12,13 +12,11 @@ status: fixes-in-progress
 > `superpowers:executing-plans` to implement this plan task by task. Steps use
 > checkbox syntax for tracking.
 
-**Status:** Final public-surface fixes in progress on 2026-07-10. The local
-implementation and prior safety re-review passed, but the whole-branch review
-found exposed fault-injection seams that remain open. Restore
-`implemented-local` only after the public wrappers are fixed, full
-`pnpm verify` passes, and re-review is clean. Hosted GitHub Actions evidence
-remains pending until this branch is pushed; the hosted-CI evidence criterion
-below remains unchecked.
+**Status:** Implemented and whole-branch review-verified locally on 2026-07-10.
+The local implementation, follow-up safety and public-surface fixes, final
+re-review, and full `pnpm verify` gate are complete. Hosted GitHub Actions
+evidence remains pending until this branch is pushed; the hosted-CI evidence
+criterion below remains unchecked.
 
 **Goal:** Retire the unsafe Bash prototype and replace the broad, simulated
 Reynard Forge implementation with one honest vertical slice that executes an
