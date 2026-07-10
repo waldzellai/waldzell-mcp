@@ -1,2 +1,0 @@
-FROM node:20-slim
-# TODO: layer tool adapters that need native deps, pin digests

@@ -1,5 +1,0 @@
-timeoutPct: 0.1
-http429Pct: 0.05
-http500Pct: 0.05
-latencyJitterMs: { min: 50, max: 400 }
-dropResponsePct: 0.02

@@ -1,223 +1,142 @@
-# Reynard Forge
+# Reynard Reliability Lab
 
-**Agentic Design Automation System (ADAS)** for evolving LLM-powered agents through quality-diversity search.
+Reynard is one supported package, `@waldzellai/agent-reliability-lab`. It runs
+already-built baseline and candidate programs in a fail-closed Docker sandbox,
+evaluates deterministic JSONL golden cases, and writes a content-addressed
+evidence bundle. It does not generate or promote candidates.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+The implementation boundary is described in
+[architecture.md](./docs/architecture.md). Historical sources and their limits
+are recorded in [provenance.md](./docs/provenance.md); features intentionally
+outside V1 are listed in
+[deferred-capabilities.md](./docs/deferred-capabilities.md).
 
-## What is Reynard Forge?
+## Prerequisites and pinned image
 
-Reynard Forge automates the discovery, evaluation, and selection of novel agent architectures. Instead of manually designing one agent, generate hundreds of candidates, evaluate them rigorously, and select the best using multi-objective optimization.
+Use Node 20 and the workspace-pinned `pnpm@9.0.0`. Docker must be available at
+the fixed path for the host platform:
 
-### Key Features
+- macOS: `/usr/local/bin/docker`
+- Linux: `/usr/bin/docker`
 
-- 🎯 **Automated Generation**: LLM-powered planner + coder creates full agent implementations
-- 🔬 **Comprehensive Evaluation**: Functional correctness, chaos resilience, idempotency
-- 🔒 **Security Testing**: 9 built-in red team scenarios for vulnerability detection
-- 📊 **Quality-Diversity**: Pareto frontier selection balancing performance, novelty, complexity
-- 🔁 **Deterministic Replay**: Seeds + model pins = reproducible results
-- 🎨 **Operator UI**: Visual comparison and analysis of candidates
+Other host platforms fail closed. Reynard never searches `PATH` for an
+alternative executable and never pulls during an evaluation. The Docker daemon
+must be reachable through `/var/run/docker.sock`.
 
-## Architecture
-
-Reynard Forge is organized into 6 layers across 10 packages:
-
-```
-┌─────────────────────────────────────────────────┐
-│ Interface Layer                                 │
-│  • forge-cli: Command-line interface            │
-│  • forge-ui: Web-based operator interface       │
-├─────────────────────────────────────────────────┤
-│ Generation Layer                                │
-│  • forge-proposer: LLM-powered generation       │
-├─────────────────────────────────────────────────┤
-│ Evaluation Layer                                │
-│  • forge-eval: Multi-suite evaluation           │
-│  • forge-redteam: Security testing              │
-├─────────────────────────────────────────────────┤
-│ Execution Layer                                 │
-│  • forge-exec: Graph execution engine           │
-├─────────────────────────────────────────────────┤
-│ Foundation Layer                                │
-│  • forge-core: Types, validation, hashing       │
-│  • forge-ledger: Idempotency tracking           │
-│  • forge-sandbox: Isolated execution            │
-│  • forge-contracts: Semantic versioning         │
-└─────────────────────────────────────────────────┘
-```
-
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed design.
-
-## Quick Start
-
-### Installation
+From `reynard/`, install dependencies and preload the only acceptance image:
 
 ```bash
-# Clone repository
-git clone https://github.com/your-org/reynard-forge.git
-cd reynard-forge/reynard
-
-# Install dependencies
-pnpm install
-
-# Build all packages
-pnpm build
-
-# Install CLI globally (optional)
-pnpm link --global forge-cli
+pnpm install --frozen-lockfile
+docker pull --platform=linux/amd64 node@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+docker image inspect node@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 --format '{{.Id}} {{.Os}}/{{.Architecture}}'
 ```
 
-### Basic Workflow
+The inspection used by the committed fixtures resolves to image ID
+`sha256:11cedc39e663e7c5d5cb9cc77a461a0d2adc25537b94e6831a6108f09cb2001b`
+and platform `linux/amd64`. A missing image, different platform, or different
+resolved image ID is an infrastructure failure; the lab does not pull or run a
+substitute.
+
+The inspect command intentionally omits Docker's newer `--platform` option so
+the gate works with the Docker 28.0 client on hosted Ubuntu runners. The
+preceding pull is platform-qualified, and Reynard independently rejects an
+inspected index, OS/architecture mismatch, or changed image ID. If a reused
+multi-platform image store resolves this index digest to another variant, the
+lab fails closed with exit 3; use a clean, dedicated runner image store rather
+than weakening inspection.
+
+No model, telemetry, application-service, registry, or infrastructure
+credential is required.
+
+## Supported CLI
+
+Build and run the deterministic fixture from `reynard/`:
 
 ```bash
-# 1. Initialize project
-forge init --name my-agent --template blank
-
-# 2. Set API key
-export OPENAI_API_KEY=sk-...
-
-# 3. Generate specification
-forge spec "Build an MCP server for weather data"
-
-# 4. Generate candidates
-forge propose --num 5
-
-# 5. Evaluate
-forge eval --smoke
-
-# 6. Security test
-forge redteam
-
-# 7. Select winners
-forge select --max 3
-
-# 8. View results
-forge ui
+pnpm run build
+pnpm lab -- evaluate \
+  --baseline fixtures/echo/baseline/candidate.json \
+  --candidate fixtures/echo/candidate/candidate.json \
+  --cases fixtures/echo/goldens.jsonl \
+  --seed 0
 ```
 
-## Configuration
+`evaluate` is the only command. All four flags are required. Candidate images
+must be digest-pinned, candidate source must match its declared digest, case IDs
+must be unique, and the seed must be a safe integer. Each candidate receives
+only `schemaVersion`, `caseId`, `seed`, and `input`; golden `expected` values
+remain on the host.
 
-Create `reynard.config.yaml`:
+The command writes to `runs/<run-id>/` under the invocation's current working
+directory. The committed `runs/.gitkeep` preserves the local output directory;
+generated bundles are operator artifacts and should not be committed.
 
-```yaml
-project: my-agent
-models:
-  planner:
-    provider: openai
-    name: gpt-4.1
-    temperature: 0.2
-  coder:
-    provider: openai
-    name: gpt-4.1
-    temperature: 0.3
-  grader:
-    provider: openai
-    name: gpt-4o-mini
-    temperature: 0.0
-  attacker:
-    provider: anthropic
-    name: claude-3-haiku
-    temperature: 0.7
-sandbox:
-  driver: docker
-  cpuMsLimit: 20000
-  memMB: 2048
-  networkEgress: allowlist
-  egressAllowlist: []
-budgets:
-  maxNodes: 18
-  maxToolKinds: 6
-  maxLOC: 2500
-```
+## Artifacts and exit codes
 
-## Examples
+A completed exit-0 or exit-5 evaluation has exactly four files:
 
-- [Simple Calculator](./examples/simple-calculator/) - Basic agent with arithmetic operations
-- More examples coming soon!
+| Artifact | Meaning |
+| --- | --- |
+| `manifest.json` | Content identity for evaluator code, dependency lock, Node runtime, seed, cases, candidates, resolved images, limits, and sandbox policy. |
+| `baseline.trace.jsonl` | Ordered, schema-validated per-case baseline requests and normalized outcomes. |
+| `candidate.trace.jsonl` | Ordered, schema-validated per-case candidate requests and normalized outcomes. |
+| `result.json` | Baseline and candidate evaluations, comparison, failed case IDs, logical digests, and overall status. |
 
-## Development
+An existing bundle is accepted only after its schemas, ordering, run ID,
+digests, reevaluation, comparison, and overall status are recomputed. Publishing
+uses a temporary sibling and atomic rename; a failed validation or publish does
+not replace an existing bundle.
 
-### Package Scripts
+| Exit | Meaning | Final bundle |
+| ---: | --- | --- |
+| `0` | Candidate passed every golden case and the comparison. | Yes |
+| `2` | CLI, candidate definition/source, seed, or case input is invalid. | No |
+| `3` | Fixed Docker binary/daemon or pinned local image/platform is unavailable. | No |
+| `4` | A started execution failed, timed out, overflowed output, or received handled `SIGINT`/`SIGTERM`. | No |
+| `5` | Protocol, golden-case, baseline, or regression evaluation failed. This is a completed evaluation, not an infrastructure error. | Yes |
+| `6` | Bundle validation or atomic publication failed. | No new bundle |
+
+Exit code `1` is not part of the public result contract.
+
+## Sandbox boundary
+
+The runner uses Docker as the V1 isolation boundary. It starts one container per
+case with an argument array and `shell: false`, the exact declared platform,
+`--pull=never`, `--network=none`, a read-only root, a read-only verified source
+snapshot, numeric UID/GID `65532:65532`, one CPU, 256 MiB memory, 64 PIDs,
+dropped capabilities, `no-new-privileges`, bounded output, a five-second
+timeout, and a 16 MiB writable tmpfs. It passes no host credentials or inherited
+environment and never mounts the Docker socket into a candidate.
+
+Docker is not claimed to be a hostile multi-tenant security boundary. V1 is
+for deterministic evaluation of operator-selected programs on a dedicated
+runner. Replay also requires the digest-matching source and pinned local image;
+V1 records their identities but does not archive their bytes.
+
+The fixture-only host and network probes are positive controls used by the real
+integration suite. They are never selected by the production CLI implicitly,
+and production candidate execution always retains `--network=none`.
+
+## Verification
+
+From the repository root, run:
 
 ```bash
-# Build all packages
-pnpm build
-
-# Run tests
-pnpm test
-
-# Lint
-pnpm lint
-
-# Type check
-pnpm typecheck
+pnpm --dir reynard verify
 ```
 
-### Package Structure
+From `reynard/`, the equivalent command is:
 
-Each package follows a standard structure:
-```
-package-name/
-├── src/           # TypeScript source
-├── dist/          # Compiled output
-├── tests/         # Unit tests
-├── package.json
-└── tsconfig.json
+```bash
+pnpm verify
 ```
 
-## CLI Commands
+Both resolve to the same `verify` script in `reynard/package.json`. CI uses
+`working-directory: reynard` and runs the second form after the same pinned
+image pull and inspection. The gate builds, typechecks, lints, checks production
+source for network/evaluation/child-process escape hatches, runs positive-count
+unit and real-Docker integration suites, and enforces the retired-tree and
+tracked-reference boundary. No suite is allowed to succeed with zero matches.
 
-| Command | Description |
-|---------|-------------|
-| `forge init` | Initialize new project |
-| `forge spec` | Generate specification |
-| `forge propose` | Generate N candidates |
-| `forge eval` | Run evaluation suites |
-| `forge redteam` | Run security tests |
-| `forge select` | Select winners |
-| `forge reproduce` | Reproduce from manifest |
-| `forge ui` | Launch web interface |
-
-## Evaluation Metrics
-
-### Functional Suite
-- Accuracy: % of test cases passed
-- Error Rate: % of test cases failed
-- Test Coverage: Passed/Failed counts
-
-### Chaos Suite
-- Latency P95: 95th percentile response time
-- Chaos Divergence: Behavior change under chaos
-- Retry Hygiene: Proper retry behavior
-
-### Idempotency Suite
-- Violations: Count of non-idempotent operations
-- Replay Correctness: % of replays matching original
-
-### Security Suite
-- Findings: Categorized by severity (critical/high/medium/low)
-- Categories: Prompt injection, tool misuse, egress escalation, PII extraction
-
-## Contributing
-
-Contributions welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
-
-## License
-
-MIT License - see [LICENSE](./LICENSE) for details.
-
-## Citation
-
-```bibtex
-@software{reynard_forge_2026,
-  title = {Reynard Forge: Agentic Design Automation System},
-  author = {Your Name},
-  year = {2026},
-  url = {https://github.com/your-org/reynard-forge}
-}
-```
-
-## Support
-
-- 📖 [Documentation](./docs/)
-- 💬 [Discussions](https://github.com/your-org/reynard-forge/discussions)
-- 🐛 [Issues](https://github.com/your-org/reynard-forge/issues)
+The workflow runs on every push and pull request without path filters and
+declares no secrets or service containers.

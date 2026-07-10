@@ -1,67 +1,51 @@
-# 🏰 Waldzell AI × glassBead Agentic Enhancement
+# Agentic Scripts — Retired Prototype
 
-**Autonomous AI Enhancement for waldzell-mcp**
+> **ARCHIVED — DO NOT RUN**
+>
+> The Bash programs formerly stored in this directory were an unsupported 2025
+> experiment. They could emit fabricated success reports, transmit broad
+> repository or host data, mutate files, and execute model-generated shell
+> commands. Their executable sources have been removed from the supported tree
+> and remain available only through Git history.
 
-This directory contains the glassBead Agentic Script Enhancement System, specifically configured for integration with the Waldzell AI ecosystem.
+The scheduled and manually dispatched GitHub Actions workflow that referenced
+these programs was removed on 2026-07-09. This directory intentionally contains
+no executable development, debugging, security, memory, or optimization tool.
 
-## 🌟 What's Included
+## Decision
 
-- **adas-meta-agent** (`evolution`) - Advanced evolution capabilities
-- **intelligent-debugger** (`dev-tools`) - Advanced dev tools capabilities
-- **performance-driven-auto-tuning** (`optimization`) - Advanced optimization capabilities
-- **memory-manager** (`memory`) - Advanced memory capabilities
-- **code-review-advanced** (`dev-tools`) - Advanced dev tools capabilities
+- Do not execute these scripts locally or in CI.
+- Do not provide them with API keys, production logs, credentials, or host
+  access.
+- Do not repair them incrementally.
+- Use Git history, beginning with commit `d9d75bb`, as the source archive.
+- Follow [the approved Reynard Reliability Lab plan](../reynard/RELIABILITY_LAB_PLAN.md)
+  for replacement work.
 
-## 🏰 Waldzell AI Integration
+## Why this was retired
 
-These scripts are optimized for the Waldzell AI development ecosystem:
+The useful idea was to generate or select candidate agent systems, run them
+under constraints, evaluate them against real tasks, and retain inspectable
+artifacts. The implementation never established that loop:
 
-### For MCP Servers
-- **Performance Optimization**: Real-time server tuning
-- **Intelligent Debugging**: MCP-specific problem solving
-- **Autonomous Enhancement**: Self-improving server capabilities
+- the ADAS script generated Bash without benchmarking or selection;
+- the security modes returned predetermined findings instead of scanning code;
+- the debugger could execute model-generated remediation commands;
+- the tuner measured help invocations and could edit scripts by default;
+- the memory restore path extracted archives at filesystem root; and
+- the automation referenced incorrect paths and scripts that did not exist.
 
-### For AI Projects  
-- **Meta-Learning**: AI systems that improve themselves
-- **Code Intelligence**: Advanced analysis and optimization
-- **Memory Management**: Sophisticated context handling
+The replacement, if approved, is deliberately narrower: one existing
+executable candidate, a fail-closed Docker boundary, real golden cases,
+content-addressed manifests and traces, deterministic replay, and comparison
+with a baseline. Generation, self-modification, UI, and autonomous promotion
+remain out of scope until that acceptance path is real.
 
-## 🚀 Quick Start
+## Historical provenance
 
-```bash
-# Make scripts executable
-chmod +x agentic-scripts/**/*.sh
+- `d9d75bb` introduced the Bash bundle and orchestration workflow.
+- `1937631` introduced the original Reynard Forge scaffold.
+- `41fb5ab` expanded Reynard while retaining simulated verification paths.
 
-# Run ADAS Meta Agent
-./agentic-scripts/evolution/adas-meta-agent.sh enhance-waldzell-project 3
-
-# Monitor performance
-./agentic-scripts/optimization/performance-driven-auto-tuning.sh
-
-# Intelligent debugging
-./agentic-scripts/dev-tools/intelligent-debugger.sh --live
-```
-
-## 🌐 Collective Intelligence
-
-By joining the glassBead Collective Intelligence, this repository:
-
-- **Shares Knowledge**: Contributes Waldzell expertise to the global network
-- **Learns Continuously**: Benefits from patterns across all enhanced repositories
-- **Evolves Autonomously**: Self-improves based on usage and performance
-- **Collaborates**: Participates in distributed AI development
-
-## 🤝 Waldzell × glassBead Synergy
-
-This represents a unique collaboration between:
-
-- **Waldzell AI**: Leading MCP innovation and community building
-- **glassBead**: Revolutionary autonomous AI enhancement systems
-
-Together creating the **future of autonomous AI development**.
-
----
-
-🏰 **Waldzell AI Excellence**  
-🧬 **glassBead Intelligence**  
-🌟 **Autonomous Evolution**
+Git preserves the removed executable sources and their history; restoring them
+would require a new, explicit security decision.

@@ -1,0 +1,31 @@
+{
+  "name": "@waldzellai/agent-reliability-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "reynard-lab": "./dist/cli.js"
+  },
+  "scripts": {
+    "prebuild": "node scripts/clean-dist.mjs",
+    "build": "tsc -p tsconfig.json",
+    "lab": "node dist/cli.js",
+    "typecheck": "pnpm run typecheck:source && pnpm run typecheck:tests",
+    "typecheck:source": "tsc -p tsconfig.json --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.tests.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "3.25.76"
+  }
+}

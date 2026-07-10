@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "name": "echo-regressed",
+  "image": "node@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293",
+  "platform": "linux/amd64",
+  "entrypoint": ["/usr/local/bin/node", "/candidate/index.mjs"],
+  "protocol": "jsonl-stdio",
+  "source": {
+    "relativePath": "src",
+    "digest": "sha256:1b55a93f45106f04d824aa0c7c51d2dc911eecab9667ff58068a325ccd5fe89f"
+  }
+}

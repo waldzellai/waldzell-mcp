@@ -1,0 +1,52 @@
+name: Reynard reliability lab
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify the real reliability path
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: reynard
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm 9
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+          run_install: false
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: reynard/pnpm-lock.yaml
+
+      - name: Enforce retired implementation boundary
+        env:
+          RETIRED_BASENAMES: code-review-advanced.sh|intelligent-debugger.sh|adas-meta-agent.sh|memory-manager.sh|performance-driven-auto-tuning.sh
+          RETIRED_TREE: agentic-scripts/
+        run: |
+          pnpm run guard:retirement
+
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Pull and inspect the pinned sandbox image
+        run: |
+          docker pull --platform=linux/amd64 node@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+          docker image inspect node@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 --format '{{.Id}} {{.Os}}/{{.Architecture}}'
+
+      - name: Build, check, and run real Docker verification
+        run: pnpm verify

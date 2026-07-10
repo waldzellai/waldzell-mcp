@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "name": "echo-slow",
+  "image": "node@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293",
+  "platform": "linux/amd64",
+  "entrypoint": ["/usr/local/bin/node", "/candidate/index.mjs"],
+  "protocol": "jsonl-stdio",
+  "source": {
+    "relativePath": "src",
+    "digest": "sha256:068bd9c8674b3373cb9699ecb3dcff24e42c499c7f5ed45f700563394e480de2"
+  }
+}

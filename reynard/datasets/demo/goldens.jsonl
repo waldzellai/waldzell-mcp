@@ -1,1 +1,0 @@
-{"input":{"query":"hello"},"expected":{"ok":true,"text":"world"}}

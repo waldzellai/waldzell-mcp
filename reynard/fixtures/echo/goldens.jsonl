@@ -1,0 +1,6 @@
+{"id":"object-values","input":{"z":1,"a":"two"},"expected":{"z":1,"a":"two"}}
+{"id":"array-values","input":[1,"two",null,{"x":3}],"expected":[1,"two",null,{"x":3}]}
+{"id":"unicode-text","input":{"text":"Zażółć gęślą jaźń 🦊"},"expected":{"text":"Zażółć gęślą jaźń 🦊"}}
+{"id":"boolean-values","input":{"enabled":true,"disabled":false},"expected":{"enabled":true,"disabled":false}}
+{"id":"nested-values","input":{"outer":{"items":[{"value":1},{"value":2}],"empty":{}}},"expected":{"outer":{"items":[{"value":1},{"value":2}],"empty":{}}}}
+{"id":"derived-expected","input":{"left":2,"right":3},"expected":{"sum":5}}
