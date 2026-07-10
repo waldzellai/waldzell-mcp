@@ -820,6 +820,30 @@ describe("artifact bundles", () => {
     await expectNoStagingSibling(runsDirectory, input.manifest.runId);
   });
 
+  test("tightens a checkout-shaped 0755 runs directory before publication", async () => {
+    const root = await temporaryDirectory("reynard-artifact-checkout-runs-");
+    const runsDirectory = join(root, "runs");
+    await mkdir(runsDirectory, { mode: 0o755 });
+    await writeFile(join(runsDirectory, ".gitkeep"), "");
+    await chmod(runsDirectory, 0o755);
+    const input = withRunsDirectory(makeArtifactInput(), runsDirectory);
+
+    const written = await writeArtifactBundle(input);
+
+    expect(written).toEqual({
+      ok: true,
+      value: {
+        directory: join(runsDirectory, input.manifest.runId),
+        published: true,
+      },
+    });
+    expect((await stat(runsDirectory)).mode & 0o777).toBe(0o700);
+    expect((await readdir(runsDirectory)).sort()).toEqual([
+      ".gitkeep",
+      input.manifest.runId,
+    ]);
+  });
+
   test("refuses artifact publication outside a private trusted runs directory", async () => {
     const root = await temporaryDirectory("reynard-artifact-untrusted-runs-");
     const runsDirectory = join(root, "runs");

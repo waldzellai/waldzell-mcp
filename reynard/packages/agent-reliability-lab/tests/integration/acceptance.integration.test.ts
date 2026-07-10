@@ -663,18 +663,42 @@ describe("public CLI acceptance", () => {
     await expect(stat(join(cwd, "runs"))).rejects.toMatchObject({ code: "ENOENT" });
   }, 15_000);
 
-  test("artifact preflight failure exits 6 before candidate execution", async () => {
-    const cwd = await temporaryDirectory("reynard-accept-artifact-failure-");
+  test("a fresh-checkout 0755 runs directory is tightened before a valid run", async () => {
+    const cwd = await temporaryDirectory("reynard-accept-checkout-runs-");
     const runs = join(cwd, "runs");
     await mkdir(runs, { mode: 0o755 });
+    await writeFile(join(runs, ".gitkeep"), "");
     await chmod(runs, 0o755);
 
     const result = await runCli(cwd);
 
+    expect(result.exitCode).toBe(0);
+    expect((await stat(runs)).mode & 0o777).toBe(0o700);
+    const names = (await readdir(runs)).sort();
+    expect(names[0]).toBe(".gitkeep");
+    expect(names[1]).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(names).toHaveLength(2);
+    await assertBundle(join(runs, names[1] ?? "missing"), true);
+  }, 20_000);
+
+  test("artifact preflight rejects a writable runs directory before Docker", async () => {
+    const cwd = await temporaryDirectory("reynard-accept-artifact-failure-");
+    const runs = join(cwd, "runs");
+    await mkdir(runs, { mode: 0o777 });
+    await chmod(runs, 0o777);
+    const sinceSeconds = Math.floor(Date.now() / 1_000) - 1;
+
+    const result = await runCli(cwd);
+    const createdNames = await labContainerCreateEvents(
+      result.pid,
+      sinceSeconds,
+    );
+
     expect(result.exitCode).toBe(6);
     expect(result.stderr).toMatch(/artifact runs directory.*owner-only/i);
+    expect(createdNames).toEqual([]);
     expect(await readdir(runs)).toEqual([]);
-  });
+  }, 15_000);
 
   test("startup recovers stale Docker and artifact state before a valid run", async () => {
     const cwd = await temporaryDirectory("reynard-accept-recovery-");

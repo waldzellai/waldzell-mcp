@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  chmod,
   lstat,
   mkdir,
   mkdtemp,
@@ -145,12 +146,27 @@ async function assertPrivateRunsDirectory(path: string): Promise<void> {
   const currentUid = process.getuid?.();
   if (
     !directory.isDirectory() ||
-    (directory.mode & 0o077) !== 0 ||
-    (currentUid !== undefined && directory.uid !== currentUid)
+    directory.isSymbolicLink() ||
+    (currentUid !== undefined && directory.uid !== currentUid) ||
+    (directory.mode & 0o022) !== 0
   ) {
     throw new Error(
       "Artifact runs directory must be an owner-only real directory",
     );
+  }
+  if ((directory.mode & 0o077) !== 0) {
+    await chmod(path, 0o700);
+  }
+  const tightened = await lstat(path);
+  if (
+    !tightened.isDirectory() ||
+    tightened.isSymbolicLink() ||
+    tightened.dev !== directory.dev ||
+    tightened.ino !== directory.ino ||
+    (currentUid !== undefined && tightened.uid !== currentUid) ||
+    (tightened.mode & 0o077) !== 0
+  ) {
+    throw new Error("Artifact runs directory could not be made owner-only");
   }
 }
 
