@@ -211,6 +211,7 @@ describe("locked-down Docker runner", () => {
       cidfile,
       "--pull=never",
       "--rm",
+      "--interactive",
       "--platform",
       "linux/arm64",
       "--network=none",
@@ -250,6 +251,48 @@ describe("locked-down Docker runner", () => {
     await expect(stat(candidate.snapshotPath)).rejects.toMatchObject({
       code: "ENOENT",
     });
+  });
+
+  test("recovers stale state once across an explicit preflight and two runs", async () => {
+    const root = await temporaryDirectory("reynard-single-recovery-");
+    const baseline = await makeCandidate(join(root, "baseline"));
+    const candidate = await makeCandidate(join(root, "candidate"));
+    const executor = new RecordingExecutor();
+    const sandbox = new DockerSandbox({
+      executor,
+      stateRoot: join(root, "state"),
+      isProcessAlive: () => true,
+    });
+    const request = {
+      schemaVersion: 1 as const,
+      caseId: "case-1",
+      seed: 0,
+      input: null,
+    };
+
+    const recovered = await sandbox.recoverStaleState();
+    const baselineResult = await sandbox.run(
+      baseline,
+      [request],
+      V1_SANDBOX_POLICY,
+    );
+    const candidateResult = await sandbox.run(
+      candidate,
+      [request],
+      V1_SANDBOX_POLICY,
+    );
+
+    expect(recovered.ok).toBe(true);
+    expect(baselineResult.ok).toBe(true);
+    expect(candidateResult.ok).toBe(true);
+    expect(
+      executor.invocations.filter(
+        ({ args }) =>
+          args[0] === "ps" &&
+          args[1] === "--all" &&
+          args.includes("name=^/reynard-lab-v1-p"),
+      ),
+    ).toHaveLength(1);
   });
 
   test("passes hostile candidate strings as literal arguments without a shell", async () => {
@@ -548,7 +591,12 @@ describe("locked-down Docker runner", () => {
     expect((await stat(cidfile)).isFile()).toBe(true);
     removalAllowed = true;
 
-    const recovered = await sandbox.recoverStaleState();
+    const recoverySandbox = new DockerSandbox({
+      executor,
+      stateRoot,
+      ownerPid,
+    });
+    const recovered = await recoverySandbox.recoverStaleState();
 
     expect(recovered.ok).toBe(true);
     expect(containerPresent).toBe(false);
@@ -644,7 +692,7 @@ describe("locked-down Docker runner", () => {
     ["multiple values", "{}\n{}\n"],
     ["extra stdout", "{}\nextra"],
   ])(
-    "maps %s to EvaluationFailed and force-removes the container",
+    "captures %s for evaluator-owned protocol normalization",
     async (_label, stdout) => {
       const root = await temporaryDirectory("reynard-protocol-failure-");
       const candidate = await makeCandidate(root);
@@ -669,21 +717,30 @@ describe("locked-down Docker runner", () => {
       );
 
       expect(result).toEqual({
-        ok: false,
-        error: expect.objectContaining({ _tag: "EvaluationFailed" }),
+        ok: true,
+        value: [
+          {
+            caseId: "case-1",
+            exitCode: 0,
+            stdout,
+            stderr: "",
+            timedOut: false,
+            durationMillis: 1,
+          },
+        ],
       });
       expect(
         executor.invocations.some(
           ({ args }) => args.join(" ") === `rm --force ${"e".repeat(64)}`,
         ),
-      ).toBe(true);
+      ).toBe(false);
       await expect(stat(candidate.snapshotPath)).rejects.toMatchObject({
         code: "ENOENT",
       });
     },
   );
 
-  test("treats an already-absent --rm container as successful protocol-failure cleanup", async () => {
+  test("does not probe an already-removed container for protocol-invalid stdout", async () => {
     const root = await temporaryDirectory("reynard-protocol-absent-");
     const candidate = await makeCandidate(root);
     const executor = new RecordingExecutor(async (invocation) => {
@@ -720,8 +777,17 @@ describe("locked-down Docker runner", () => {
     );
 
     expect(result).toEqual({
-      ok: false,
-      error: expect.objectContaining({ _tag: "EvaluationFailed" }),
+      ok: true,
+      value: [
+        {
+          caseId: "case-1",
+          exitCode: 0,
+          stdout: "not-json\n",
+          stderr: "",
+          timedOut: false,
+          durationMillis: 1,
+        },
+      ],
     });
     expect(
       executor.invocations.some(
@@ -730,7 +796,7 @@ describe("locked-down Docker runner", () => {
           args.includes("--quiet") &&
           args.includes(`name=^/${containerName}$`),
       ),
-    ).toBe(true);
+    ).toBe(false);
     await expect(
       stat(join(stateRoot, "cidfiles", `${containerName}.cid`)),
     ).rejects.toMatchObject({ code: "ENOENT" });

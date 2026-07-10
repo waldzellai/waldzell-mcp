@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "name": "echo-host-probe",
+  "image": "node@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293",
+  "platform": "linux/amd64",
+  "entrypoint": ["/usr/local/bin/node", "/candidate/index.mjs"],
+  "protocol": "jsonl-stdio",
+  "source": {
+    "relativePath": "src",
+    "digest": "sha256:3ff0387b2072d2a224e336acadcb25573a60f9c926b3d4564329b0e3df63af78"
+  }
+}

@@ -15,6 +15,7 @@
     "test:unit": "vitest run packages/agent-reliability-lab/tests/unit",
     "test": "pnpm run test:unit && pnpm run test:integration",
     "test:integration": "vitest run packages/agent-reliability-lab/tests/integration",
+    "test:acceptance": "vitest run packages/agent-reliability-lab/tests/integration/acceptance.integration.test.ts",
     "typecheck": "pnpm --filter @waldzellai/agent-reliability-lab run typecheck",
     "lint": "eslint eslint.config.js vitest.config.ts \"packages/agent-reliability-lab/**/*.ts\"",
     "verify": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test:unit && pnpm run test:integration && pnpm run guard:retirement",

@@ -198,10 +198,6 @@ function executionFailed<T>(message: string): Result<T> {
   return { ok: false, error: { _tag: "ExecutionFailed", message } };
 }
 
-function evaluationFailed<T>(message: string): Result<T> {
-  return { ok: false, error: { _tag: "EvaluationFailed", message } };
-}
-
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -229,20 +225,6 @@ function labOwnerPid(name: string): number | undefined {
   return Number.isSafeInteger(pid) && pid > 0 ? pid : undefined;
 }
 
-function validProtocolOutput(stdout: string): boolean {
-  if (!stdout.endsWith("\n")) return false;
-  const withoutTerminator = stdout.slice(0, -1);
-  if (withoutTerminator.includes("\n") || withoutTerminator.length === 0) {
-    return false;
-  }
-  try {
-    JSON.parse(withoutTerminator);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function processSucceeded(outcome: ProcessOutcome): boolean {
   return (
     outcome.spawnError === undefined &&
@@ -261,6 +243,7 @@ export class DockerSandbox implements CandidateRunner {
   private readonly ownerPid: number;
   private readonly uniqueId: () => string;
   private readonly isProcessAlive: (pid: number) => boolean;
+  private recoveryComplete = false;
 
   constructor(options: DockerSandboxOptions = {}) {
     this.executable = options.executable ?? DEFAULT_DOCKER_EXECUTABLE;
@@ -386,6 +369,7 @@ export class DockerSandbox implements CandidateRunner {
   }
 
   async recoverStaleState(): Promise<Result<void>> {
+    if (this.recoveryComplete) return { ok: true, value: undefined };
     try {
       const listed = await this.executor.execute(
         this.controlInvocation([
@@ -469,6 +453,7 @@ export class DockerSandbox implements CandidateRunner {
           await rm(join(directory, name), { recursive: true, force: true });
         }
       }
+      this.recoveryComplete = true;
       return { ok: true, value: undefined };
     } catch (error) {
       return sandboxUnavailable(`Could not recover Docker state: ${errorMessage(error)}`);
@@ -574,6 +559,7 @@ export class DockerSandbox implements CandidateRunner {
           cidfile,
           "--pull=never",
           "--rm",
+          "--interactive",
           "--platform",
           candidate.definition.platform,
           "--network=none",
@@ -617,17 +603,6 @@ export class DockerSandbox implements CandidateRunner {
             const removed = await this.forceRemoveContainer(containerName, cidfile);
             return executionFailed(
               `Candidate execution failed for ${request.data.caseId}${removed ? "" : "; container cleanup failed and its cidfile was preserved"}`,
-            );
-          }
-          if (!validProtocolOutput(outcome.stdout)) {
-            const removed = await this.forceRemoveContainer(containerName, cidfile);
-            if (!removed) {
-              return executionFailed(
-                `Candidate protocol failed for ${request.data.caseId}; container cleanup failed and its cidfile was preserved`,
-              );
-            }
-            return evaluationFailed(
-              `Candidate protocol failed for ${request.data.caseId}`,
             );
           }
           const afterCase = await verifyCandidateSnapshot(snapshot);

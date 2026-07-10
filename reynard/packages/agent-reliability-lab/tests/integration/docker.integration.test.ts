@@ -199,11 +199,11 @@ describe("real locked-down Docker runner", () => {
   }, 15_000);
 
   test.each([
-    ["invalid-json", "printf 'not-json\\n'"],
-    ["multiple-json", "printf '{}\\n{}\\n'"],
+    ["invalid-json", "printf 'not-json\\n'", "not-json\n"],
+    ["multiple-json", "printf '{}\\n{}\\n'", "{}\n{}\n"],
   ])(
-    "classifies real %s stdout as EvaluationFailed after Docker --rm cleanup",
-    async (testName, outputCommand) => {
+    "captures real %s stdout for evaluator-owned protocol normalization",
+    async (testName, outputCommand, stdout) => {
       const root = await temporaryDirectory(`reynard-real-${testName}-`);
       const prepared = await prepareCandidate(
         root,
@@ -218,8 +218,16 @@ describe("real locked-down Docker runner", () => {
       );
 
       expect(result).toEqual({
-        ok: false,
-        error: expect.objectContaining({ _tag: "EvaluationFailed" }),
+        ok: true,
+        value: [
+          expect.objectContaining({
+            caseId: testName,
+            exitCode: 0,
+            stdout,
+            stderr: "",
+            timedOut: false,
+          }),
+        ],
       });
       await expectNoRuntimeState(prepared);
     },
