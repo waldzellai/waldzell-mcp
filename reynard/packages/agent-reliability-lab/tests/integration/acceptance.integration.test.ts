@@ -208,19 +208,20 @@ async function directoryNames(path: string): Promise<readonly string[]> {
 async function assertInterruptedStateClean(
   cwd: string,
   cliPid: number,
-  containerName: string,
+  containerName?: string,
 ): Promise<void> {
+  const prefix = `reynard-lab-v1-p${cliPid}-`;
   const remainingContainer = await docker([
     "ps",
     "--all",
-    "--quiet",
+    "--format",
+    "{{.Names}}",
     "--filter",
-    `name=^/${containerName}$`,
+    `name=^/${prefix}`,
   ]);
   expect(remainingContainer.exitCode).toBe(0);
   expect(remainingContainer.stdout.trim()).toBe("");
-  cleanupContainers.delete(containerName);
-  const prefix = `reynard-lab-v1-p${cliPid}-`;
+  if (containerName !== undefined) cleanupContainers.delete(containerName);
   const stateRoot = join(tmpdir(), "reynard-lab-v1");
   expect(
     (await directoryNames(join(stateRoot, "staging"))).filter((name) =>
@@ -234,6 +235,103 @@ async function assertInterruptedStateClean(
   ).toEqual([]);
   const runNames = await directoryNames(join(cwd, "runs"));
   expect(runNames.filter((name) => name !== ".gitkeep")).toEqual([]);
+}
+
+function commandIsRunning(running: RunningCommand): boolean {
+  return running.child.exitCode === null && running.child.signalCode === null;
+}
+
+async function waitForChildExit(
+  running: RunningCommand,
+  timeoutMillis: number,
+): Promise<boolean> {
+  if (!commandIsRunning(running)) return true;
+  return new Promise<boolean>((resolveExit) => {
+    let settled = false;
+    const finish = (exited: boolean): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      running.child.removeListener("close", onClose);
+      resolveExit(exited);
+    };
+    const onClose = (): void => {
+      finish(true);
+    };
+    const timeout = setTimeout(() => {
+      finish(!commandIsRunning(running));
+    }, timeoutMillis);
+    running.child.once("close", onClose);
+    if (!commandIsRunning(running)) finish(true);
+  });
+}
+
+async function cleanupInterruptedRun(
+  cwd: string,
+  running: RunningCommand,
+  knownContainer?: string,
+): Promise<void> {
+  if (commandIsRunning(running)) {
+    running.child.kill("SIGTERM");
+    await waitForChildExit(running, 2_000);
+    if (commandIsRunning(running)) {
+      running.child.kill("SIGKILL");
+    }
+  }
+  if (!(await waitForChildExit(running, 2_000))) {
+    throw new Error(`Interrupted CLI ${running.pid} did not exit`);
+  }
+  await running.result.catch(() => undefined);
+
+  const prefix = `reynard-lab-v1-p${running.pid}-`;
+  const listed = await docker([
+    "ps",
+    "--all",
+    "--filter",
+    `name=^/${prefix}`,
+    "--format",
+    "{{.Names}}",
+  ]);
+  if (listed.exitCode !== 0) {
+    throw new Error(`Could not list interrupted containers: ${listed.stderr}`);
+  }
+  for (const name of listed.stdout.split("\n").filter((value) => value !== "")) {
+    const removed = await docker(["rm", "--force", name]);
+    if (removed.exitCode !== 0) {
+      throw new Error(`Could not remove interrupted container ${name}`);
+    }
+    cleanupContainers.delete(name);
+  }
+  if (knownContainer !== undefined) cleanupContainers.delete(knownContainer);
+
+  const stateRoot = join(tmpdir(), "reynard-lab-v1");
+  for (const namespace of ["staging", "cidfiles"] as const) {
+    const directory = join(stateRoot, namespace);
+    for (const name of await directoryNames(directory)) {
+      if (name.startsWith(prefix)) {
+        await rm(join(directory, name), { recursive: true, force: true });
+      }
+    }
+  }
+  const runs = join(cwd, "runs");
+  for (const name of await directoryNames(runs)) {
+    const path = join(runs, name);
+    if (name.includes(`.staging-p${running.pid}-`)) {
+      await rm(path, { recursive: true, force: true });
+      continue;
+    }
+    if (name.endsWith(".publish-lock")) {
+      try {
+        const record = JSON.parse(await readFile(path, "utf8")) as {
+          pid?: unknown;
+        };
+        if (record.pid === running.pid) await rm(path, { force: true });
+      } catch {
+        // Preserve malformed or concurrently changed locks for diagnosis.
+      }
+    }
+  }
+  await assertInterruptedStateClean(cwd, running.pid, knownContainer);
 }
 
 async function runDirectory(cwd: string): Promise<string> {
@@ -781,14 +879,19 @@ describe("public CLI acceptance", () => {
         baseline: definition("slow"),
         candidate: definition("candidate"),
       });
-      const containerName = await waitForLabContainer(running.pid);
+      let containerName: string | undefined;
+      try {
+        containerName = await waitForLabContainer(running.pid);
 
-      expect(running.child.kill(signal)).toBe(true);
-      const result = await running.result;
+        expect(running.child.kill(signal)).toBe(true);
+        const result = await running.result;
 
-      expect(result.exitCode).toBe(4);
-      expect(result.stderr).toMatch(/baseline.*execution failed/i);
-      await assertInterruptedStateClean(cwd, running.pid, containerName);
+        expect(result.exitCode).toBe(4);
+        expect(result.stderr).toMatch(/baseline.*execution failed/i);
+        await assertInterruptedStateClean(cwd, running.pid, containerName);
+      } finally {
+        await cleanupInterruptedRun(cwd, running, containerName);
+      }
     },
     15_000,
   );
