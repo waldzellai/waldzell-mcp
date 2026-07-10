@@ -4,9 +4,27 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import * as publicApi from "../../src/index.js";
+
 const reynardRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 
 describe("Reynard workspace structure", () => {
+  it("keeps snapshot cleanup internal to the package", () => {
+    expect("cleanupCandidateSnapshot" in publicApi).toBe(false);
+  });
+
+  it("does not suppress CLI snapshot cleanup failures", async () => {
+    const cliSource = await readFile(
+      resolve(
+        reynardRoot,
+        "packages/agent-reliability-lab/src/cli.ts",
+      ),
+      "utf8",
+    );
+
+    expect(cliSource).not.toContain("cleanupCandidateSnapshot(snapshot).catch");
+  });
+
   it("keeps only the supported reliability-lab workspace package", async () => {
     const packageDirectories = (await readdir(resolve(reynardRoot, "packages"), {
       withFileTypes: true,

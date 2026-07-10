@@ -15,8 +15,10 @@ import { afterEach, describe, expect, test } from "vitest";
 
 import { canonicalJson, sha256 } from "../../src/canonical-json.js";
 import {
+  cleanupCandidateSnapshot,
   defaultLabStateRoot,
   loadCandidateSnapshot,
+  resolveCandidateSnapshot,
 } from "../../src/candidate.js";
 import {
   V1_SANDBOX_POLICY,
@@ -154,6 +156,7 @@ function candidateDefinition(
 async function makeCandidate(
   root: string,
   entrypoint: readonly string[] = ["/candidate/main.sh", "--literal"],
+  stagingRoot = join(root, "state", "staging"),
 ): Promise<ResolvedCandidate> {
   const sourceDirectory = join(root, "candidate", "src");
   await mkdir(sourceDirectory, { recursive: true });
@@ -184,25 +187,74 @@ async function makeCandidate(
     }),
   );
   const snapshot = await loadCandidateSnapshot(definitionPath, {
-    stagingRoot: join(root, "state", "staging"),
+    stagingRoot,
   });
   if (!snapshot.ok) throw new Error(snapshot.error.message);
-  return {
-    definition: snapshot.value.definition,
-    definitionPath: snapshot.value.definitionPath,
-    sourcePath: snapshot.value.sourcePath,
-    snapshotPath: snapshot.value.snapshotPath,
-    image: {
-      reference: IMAGE_REFERENCE,
-      imageId: IMAGE_ID,
-      os: "linux",
-      architecture: "arm64",
-      platform: "linux/arm64",
-    },
-  };
+  const resolved = await resolveCandidateSnapshot(snapshot.value, {
+    reference: IMAGE_REFERENCE,
+    imageId: IMAGE_ID,
+    os: "linux",
+    architecture: "arm64",
+    platform: "linux/arm64",
+  });
+  if (!resolved.ok) throw new Error(resolved.error.message);
+  return resolved.value;
 }
 
 describe("locked-down Docker runner", () => {
+  test.each(["policy", "preflight", "execution"] as const)(
+    "rejects a forged snapshot before %s and preserves the foreign path",
+    async (route) => {
+      const root = await temporaryDirectory(`reynard-forged-${route}-`);
+      const candidate = await makeCandidate(root);
+      const foreignDirectory = join(root, "foreign");
+      const sentinel = join(foreignDirectory, "keep.txt");
+      await mkdir(foreignDirectory);
+      await writeFile(sentinel, "preserve me");
+      if (route === "execution") {
+        await writeFile(
+          join(foreignDirectory, "main.sh"),
+          await readFile(join(candidate.snapshotPath, "main.sh")),
+        );
+        await chmod(join(foreignDirectory, "main.sh"), 0o744);
+      }
+      const forged = { ...candidate, snapshotPath: foreignDirectory };
+      const executor = new RecordingExecutor((invocation) => {
+        if (route === "preflight" && invocation.args[0] === "version") {
+          return successfulOutcome({ exitCode: 1, stderr: "unavailable" });
+        }
+        if (route === "execution" && invocation.args[0] === "run") {
+          return successfulOutcome({ exitCode: 17 });
+        }
+        return defaultResponse(invocation);
+      });
+      const sandbox = new DockerSandbox({
+        executor,
+        stateRoot: join(root, "state"),
+        isProcessAlive: () => true,
+      });
+
+      try {
+        const result = await sandbox.run(
+          forged,
+          [{ schemaVersion: 1, caseId: "case-1", seed: 0, input: null }],
+          route === "policy"
+            ? { ...V1_SANDBOX_POLICY, memoryMiB: 512 }
+            : V1_SANDBOX_POLICY,
+        );
+
+        expect(result).toEqual({
+          ok: false,
+          error: expect.objectContaining({ _tag: "InvalidInput" }),
+        });
+        expect(executor.invocations).toEqual([]);
+        expect(await readFile(sentinel, "utf8")).toBe("preserve me");
+      } finally {
+        await cleanupCandidateSnapshot(candidate);
+      }
+    },
+  );
+
   test("passes the complete immutable policy as one exact Docker argument vector", async () => {
     const root = await temporaryDirectory("reynard-docker-args-");
     const stateRoot = join(root, "state");
@@ -282,8 +334,17 @@ describe("locked-down Docker runner", () => {
 
   test("recovers stale state once across an explicit preflight and two runs", async () => {
     const root = await temporaryDirectory("reynard-single-recovery-");
-    const baseline = await makeCandidate(join(root, "baseline"));
-    const candidate = await makeCandidate(join(root, "candidate"));
+    const stagingRoot = join(root, "state", "staging");
+    const baseline = await makeCandidate(
+      join(root, "baseline"),
+      undefined,
+      stagingRoot,
+    );
+    const candidate = await makeCandidate(
+      join(root, "candidate"),
+      undefined,
+      stagingRoot,
+    );
     const executor = new RecordingExecutor();
     const sandbox = new DockerSandbox({
       executor,
@@ -631,8 +692,8 @@ describe("locked-down Docker runner", () => {
   test("maps a pre-start cidfile-directory failure to SandboxUnavailable", async () => {
     const root = await temporaryDirectory("reynard-prestart-state-");
     const candidate = await makeCandidate(root);
-    const stateRoot = join(root, "not-a-directory");
-    await writeFile(stateRoot, "occupied");
+    const stateRoot = join(root, "state");
+    await writeFile(join(stateRoot, "cidfiles"), "occupied");
     const executor = new RecordingExecutor();
     const sandbox = new DockerSandbox({ executor, stateRoot });
 

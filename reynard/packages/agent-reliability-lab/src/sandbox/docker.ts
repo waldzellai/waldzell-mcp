@@ -21,6 +21,7 @@ import {
   cleanupCandidateSnapshot,
   defaultLabStateRoot,
   verifyCandidateSnapshot,
+  verifyCandidateSnapshotOwnership,
 } from "../candidate.js";
 import type { Result } from "../errors.js";
 
@@ -541,14 +542,7 @@ export class DockerSandbox implements CandidateRunner {
       if (canonicalJson(image.value) !== canonicalJson(candidate.image)) {
         return sandboxUnavailable("Pinned image identity changed after resolution");
       }
-      const snapshot = {
-        definition: candidate.definition,
-        definitionPath: candidate.definitionPath,
-        sourcePath: candidate.sourcePath,
-        snapshotPath: candidate.snapshotPath,
-        sourceDigest: candidate.definition.source.digest,
-      };
-      const verified = await verifyCandidateSnapshot(snapshot);
+      const verified = await verifyCandidateSnapshot(candidate);
       if (!verified.ok) return verified;
       const cidfilesDirectory = join(this.stateRoot, "cidfiles");
       await mkdir(cidfilesDirectory, { recursive: true, mode: 0o700 });
@@ -621,7 +615,7 @@ export class DockerSandbox implements CandidateRunner {
               `Candidate execution failed for ${request.data.caseId}${removed ? "" : "; container cleanup failed and its cidfile was preserved"}`,
             );
           }
-          const afterCase = await verifyCandidateSnapshot(snapshot);
+          const afterCase = await verifyCandidateSnapshot(candidate);
           if (!afterCase.ok) {
             const removed = await this.forceRemoveContainer(containerName, cidfile);
             return removed
@@ -661,6 +655,11 @@ export class DockerSandbox implements CandidateRunner {
     requests: readonly CandidateRequest[],
     policy: SandboxPolicy,
   ): Promise<Result<readonly ExecutionResult[]>> {
+    const owned = await verifyCandidateSnapshotOwnership(
+      candidate,
+      join(this.stateRoot, "staging"),
+    );
+    if (!owned.ok) return owned;
     const result = await this.runWithVerifiedSnapshot(
       candidate,
       requests,

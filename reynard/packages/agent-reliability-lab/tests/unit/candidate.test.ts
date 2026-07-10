@@ -22,6 +22,7 @@ import { canonicalJson, sha256 } from "../../src/canonical-json.js";
 import {
   cleanupCandidateSnapshot,
   loadCandidateSnapshot,
+  type CandidateSnapshot,
   verifyCandidateSnapshot,
 } from "../../src/candidate.js";
 import { V1_INPUT_LIMITS } from "../../src/contracts.js";
@@ -109,6 +110,45 @@ async function listFiles(root: string, directory = root): Promise<TestSourceEntr
 }
 
 describe("candidate loader", () => {
+  test("never recursively removes a caller-forged snapshot path", async () => {
+    const root = await temporaryDirectory("reynard-forged-cleanup-");
+    const foreignDirectory = join(root, "foreign");
+    const sentinel = join(foreignDirectory, "keep.txt");
+    await mkdir(foreignDirectory);
+    await writeFile(sentinel, "preserve me");
+    const forged = { snapshotPath: foreignDirectory } as CandidateSnapshot;
+
+    await expect(cleanupCandidateSnapshot(forged)).rejects.toThrow(/owned/i);
+    expect(await readFile(sentinel, "utf8")).toBe("preserve me");
+  });
+
+  test("reports cleanup failure when the owned staging root loses privacy", async () => {
+    const root = await temporaryDirectory("reynard-checked-cleanup-");
+    const sourceDirectory = join(root, "candidate", "src");
+    const stagingRoot = join(root, "state", "staging");
+    await mkdir(sourceDirectory, { recursive: true });
+    const bytes = Buffer.from("safe");
+    await writeFile(join(sourceDirectory, "main.sh"), bytes);
+    const definitionPath = join(root, "candidate", "candidate.json");
+    await writeDefinition(
+      definitionPath,
+      "src",
+      digestForFiles([{ relativePath: "main.sh", bytes, executableBits: 0 }]),
+    );
+    const loaded = await loadCandidateSnapshot(definitionPath, { stagingRoot });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    await chmod(stagingRoot, 0o755);
+
+    await expect(cleanupCandidateSnapshot(loaded.value)).rejects.toThrow(
+      /owner-controlled/i,
+    );
+    expect((await stat(loaded.value.snapshotPath)).isDirectory()).toBe(true);
+
+    await chmod(stagingRoot, 0o700);
+    await cleanupCandidateSnapshot(loaded.value);
+  });
+
   test("copies a declared source tree into a verified private snapshot", async () => {
     const root = await temporaryDirectory("reynard-candidate-");
     const stagingRoot = join(root, "state", "staging");

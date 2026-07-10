@@ -7,7 +7,10 @@ import { promisify } from "node:util";
 import { afterEach, describe, expect, test } from "vitest";
 
 import { canonicalJson, sha256 } from "../../src/canonical-json.js";
-import { loadCandidateSnapshot } from "../../src/candidate.js";
+import {
+  loadCandidateSnapshot,
+  resolveCandidateSnapshot,
+} from "../../src/candidate.js";
 import {
   V1_SANDBOX_POLICY,
   type CandidateDefinition,
@@ -95,7 +98,6 @@ async function prepareCandidate(
   if (!snapshot.ok) throw new Error(snapshot.error.message);
   const uniqueId = `${testName}-${uniqueOrdinal++}`;
   const sandbox = new DockerSandbox({
-    executable: DOCKER,
     stateRoot,
     uniqueId: () => uniqueId,
   });
@@ -108,14 +110,10 @@ async function prepareCandidate(
     architecture: "amd64",
     platform: PLATFORM,
   });
+  const candidate = await resolveCandidateSnapshot(snapshot.value, image.value);
+  if (!candidate.ok) throw new Error(candidate.error.message);
   return {
-    candidate: {
-      definition,
-      definitionPath: snapshot.value.definitionPath,
-      sourcePath: snapshot.value.sourcePath,
-      snapshotPath: snapshot.value.snapshotPath,
-      image: image.value,
-    },
+    candidate: candidate.value,
     sandbox,
     stateRoot,
     containerName: `reynard-lab-v1-p${process.pid}-${uniqueId}`,

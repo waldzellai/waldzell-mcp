@@ -11,13 +11,13 @@ import {
 import {
   cleanupCandidateSnapshot,
   loadCandidateSnapshot,
+  resolveCandidateSnapshot,
   type CandidateSnapshot,
 } from "./candidate.js";
 import { compareEvaluations } from "./compare.js";
 import {
   V1_INPUT_LIMITS,
   V1_SANDBOX_POLICY,
-  type ResolvedCandidate,
 } from "./contracts.js";
 import type { LabError, Result } from "./errors.js";
 import { evaluateExecutions } from "./evaluator.js";
@@ -101,182 +101,224 @@ function parseCliOptions(args: readonly string[]): Result<CliOptions> {
   }
 }
 
-async function cleanupSnapshots(
-  snapshots: readonly (CandidateSnapshot | undefined)[],
-): Promise<void> {
-  await Promise.all(
-    snapshots.map((snapshot) =>
-      snapshot === undefined
-        ? Promise.resolve()
-        : cleanupCandidateSnapshot(snapshot).catch(() => undefined),
-    ),
-  );
+interface EvaluationSnapshots {
+  baseline?: CandidateSnapshot;
+  candidate?: CandidateSnapshot;
 }
 
-function resolvedCandidate(
-  snapshot: CandidateSnapshot,
-  image: ResolvedCandidate["image"],
-): ResolvedCandidate {
+async function cleanupSnapshots(
+  snapshots: EvaluationSnapshots,
+): Promise<Result<void>> {
+  const failures: string[] = [];
+  for (const [phase, snapshot] of Object.entries(snapshots)) {
+    if (snapshot === undefined) continue;
+    try {
+      await cleanupCandidateSnapshot(snapshot);
+    } catch (error) {
+      failures.push(
+        `${phase}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+  return failures.length === 0
+    ? { ok: true, value: undefined }
+    : {
+        ok: false,
+        error: {
+          _tag: "SandboxUnavailable",
+          message: `Candidate snapshot cleanup failed during finalization: ${failures.join("; ")}`,
+        },
+      };
+}
+
+function combineEvaluationAndCleanup<T>(
+  primary: Result<T>,
+  cleanup: Result<void>,
+): Result<T> {
+  if (cleanup.ok) return primary;
+  if (primary.ok) return cleanup;
   return {
-    definition: snapshot.definition,
-    definitionPath: snapshot.definitionPath,
-    sourcePath: snapshot.sourcePath,
-    snapshotPath: snapshot.snapshotPath,
-    image,
+    ok: false,
+    error: {
+      ...primary.error,
+      message: `${primary.error.message}; ${cleanup.error.message} after ${primary.error._tag}`,
+    },
   };
 }
 
-async function evaluate(options: CliOptions): Promise<Result<CompletedEvaluation>> {
+async function evaluatePrimary(
+  options: CliOptions,
+  snapshots: EvaluationSnapshots,
+): Promise<Result<CompletedEvaluation>> {
   const loadedCases = await loadEvaluationCases(options.cases);
   if (!loadedCases.ok) return loadedCases;
   const requests = createCandidateRequests(loadedCases.value.cases, options.seed);
   if (!requests.ok) return requests;
 
-  let baselineSnapshot: CandidateSnapshot | undefined;
-  let candidateSnapshot: CandidateSnapshot | undefined;
-  try {
-    const loadedBaseline = await loadCandidateSnapshot(options.baseline);
-    if (!loadedBaseline.ok) {
-      return {
-        ok: false,
-        error: withContext(loadedBaseline.error, "baseline"),
-      };
-    }
-    baselineSnapshot = loadedBaseline.value;
-    const loadedCandidate = await loadCandidateSnapshot(options.candidate);
-    if (!loadedCandidate.ok) {
-      return {
-        ok: false,
-        error: withContext(loadedCandidate.error, "candidate"),
-      };
-    }
-    candidateSnapshot = loadedCandidate.value;
-
-    const runsDirectory = resolve(process.cwd(), "runs");
-    const artifactRecovery = await recoverArtifactPublishLocks(runsDirectory);
-    if (!artifactRecovery.ok) return artifactRecovery;
-
-    const createdSandbox = createDockerSandbox();
-    if (!createdSandbox.ok) return createdSandbox;
-    const sandbox = createdSandbox.value;
-    const available = await sandbox.checkAvailability();
-    if (!available.ok) return available;
-    const recovered = await sandbox.recoverStaleState();
-    if (!recovered.ok) return recovered;
-    const baselineImage = await sandbox.resolveImage(
-      baselineSnapshot.definition,
-    );
-    if (!baselineImage.ok) {
-      return {
-        ok: false,
-        error: withContext(baselineImage.error, "baseline"),
-      };
-    }
-    const candidateImage = await sandbox.resolveImage(
-      candidateSnapshot.definition,
-    );
-    if (!candidateImage.ok) {
-      return {
-        ok: false,
-        error: withContext(candidateImage.error, "candidate"),
-      };
-    }
-    const evaluator = await resolveEvaluatorIdentity(PACKAGE_ROOT);
-    if (!evaluator.ok) return evaluator;
-    const manifest = createRunManifest({
-      evaluator: evaluator.value,
-      seed: options.seed,
-      baseline: {
-        definition: baselineSnapshot.definition,
-        image: baselineImage.value,
-      },
-      candidate: {
-        definition: candidateSnapshot.definition,
-        image: candidateImage.value,
-      },
-      casesDigest: loadedCases.value.digest,
-      inputLimits: V1_INPUT_LIMITS,
-      sandbox: V1_SANDBOX_POLICY,
-    });
-    if (!manifest.ok) return manifest;
-
-    const baselineExecutions = await sandbox.run(
-      resolvedCandidate(baselineSnapshot, baselineImage.value),
-      requests.value,
-      V1_SANDBOX_POLICY,
-    );
-    baselineSnapshot = undefined;
-    if (!baselineExecutions.ok) {
-      return {
-        ok: false,
-        error: withContext(baselineExecutions.error, "baseline"),
-      };
-    }
-    const baselineEvaluation = evaluateExecutions(
-      loadedCases.value.cases,
-      baselineExecutions.value,
-    );
-    if (!baselineEvaluation.ok) {
-      return {
-        ok: false,
-        error: withContext(baselineEvaluation.error, "baseline"),
-      };
-    }
-
-    const candidateExecutions = await sandbox.run(
-      resolvedCandidate(candidateSnapshot, candidateImage.value),
-      requests.value,
-      V1_SANDBOX_POLICY,
-    );
-    candidateSnapshot = undefined;
-    if (!candidateExecutions.ok) {
-      return {
-        ok: false,
-        error: withContext(candidateExecutions.error, "candidate"),
-      };
-    }
-    const candidateEvaluation = evaluateExecutions(
-      loadedCases.value.cases,
-      candidateExecutions.value,
-    );
-    if (!candidateEvaluation.ok) {
-      return {
-        ok: false,
-        error: withContext(candidateEvaluation.error, "candidate"),
-      };
-    }
-    const compared = compareEvaluations(
-      loadedCases.value.cases,
-      baselineEvaluation.value.evaluation,
-      candidateEvaluation.value.evaluation,
-    );
-    if (!compared.ok) return compared;
-    const written = await writeArtifactBundle({
-      runsDirectory,
-      manifest: manifest.value,
-      loadedCases: loadedCases.value,
-      baselineExecutions: baselineExecutions.value,
-      candidateExecutions: candidateExecutions.value,
-      baselineEvaluation: baselineEvaluation.value.evaluation,
-      candidateEvaluation: candidateEvaluation.value.evaluation,
-      comparison: compared.value.comparison,
-    });
-    if (!written.ok) return written;
+  const loadedBaseline = await loadCandidateSnapshot(options.baseline);
+  if (!loadedBaseline.ok) {
     return {
-      ok: true,
-      value: {
-        directory: written.value.directory,
-        published: written.value.published,
-        passedCaseCount:
-          candidateEvaluation.value.evaluation.passedCaseCount,
-        caseCount: candidateEvaluation.value.evaluation.caseCount,
-        failedCaseIds: candidateEvaluation.value.evaluation.failedCaseIds,
-        overallPassed: compared.value.overallPassed,
+      ok: false,
+      error: withContext(loadedBaseline.error, "baseline"),
+    };
+  }
+  snapshots.baseline = loadedBaseline.value;
+  const loadedCandidate = await loadCandidateSnapshot(options.candidate);
+  if (!loadedCandidate.ok) {
+    return {
+      ok: false,
+      error: withContext(loadedCandidate.error, "candidate"),
+    };
+  }
+  snapshots.candidate = loadedCandidate.value;
+
+  const runsDirectory = resolve(process.cwd(), "runs");
+  const artifactRecovery = await recoverArtifactPublishLocks(runsDirectory);
+  if (!artifactRecovery.ok) return artifactRecovery;
+
+  const createdSandbox = createDockerSandbox();
+  if (!createdSandbox.ok) return createdSandbox;
+  const sandbox = createdSandbox.value;
+  const available = await sandbox.checkAvailability();
+  if (!available.ok) return available;
+  const recovered = await sandbox.recoverStaleState();
+  if (!recovered.ok) return recovered;
+  const baselineImage = await sandbox.resolveImage(
+    snapshots.baseline.definition,
+  );
+  if (!baselineImage.ok) {
+    return {
+      ok: false,
+      error: withContext(baselineImage.error, "baseline"),
+    };
+  }
+  const candidateImage = await sandbox.resolveImage(
+    snapshots.candidate.definition,
+  );
+  if (!candidateImage.ok) {
+    return {
+      ok: false,
+      error: withContext(candidateImage.error, "candidate"),
+    };
+  }
+  const baselineCandidate = await resolveCandidateSnapshot(
+    snapshots.baseline,
+    baselineImage.value,
+  );
+  if (!baselineCandidate.ok) return baselineCandidate;
+  const candidate = await resolveCandidateSnapshot(
+    snapshots.candidate,
+    candidateImage.value,
+  );
+  if (!candidate.ok) return candidate;
+  const evaluator = await resolveEvaluatorIdentity(PACKAGE_ROOT);
+  if (!evaluator.ok) return evaluator;
+  const manifest = createRunManifest({
+    evaluator: evaluator.value,
+    seed: options.seed,
+    baseline: {
+      definition: snapshots.baseline.definition,
+      image: baselineImage.value,
+    },
+    candidate: {
+      definition: snapshots.candidate.definition,
+      image: candidateImage.value,
+    },
+    casesDigest: loadedCases.value.digest,
+    inputLimits: V1_INPUT_LIMITS,
+    sandbox: V1_SANDBOX_POLICY,
+  });
+  if (!manifest.ok) return manifest;
+
+  const baselineExecutions = await sandbox.run(
+    baselineCandidate.value,
+    requests.value,
+    V1_SANDBOX_POLICY,
+  );
+  if (!baselineExecutions.ok) {
+    return {
+      ok: false,
+      error: withContext(baselineExecutions.error, "baseline"),
+    };
+  }
+  const baselineEvaluation = evaluateExecutions(
+    loadedCases.value.cases,
+    baselineExecutions.value,
+  );
+  if (!baselineEvaluation.ok) {
+    return {
+      ok: false,
+      error: withContext(baselineEvaluation.error, "baseline"),
+    };
+  }
+
+  const candidateExecutions = await sandbox.run(
+    candidate.value,
+    requests.value,
+    V1_SANDBOX_POLICY,
+  );
+  if (!candidateExecutions.ok) {
+    return {
+      ok: false,
+      error: withContext(candidateExecutions.error, "candidate"),
+    };
+  }
+  const candidateEvaluation = evaluateExecutions(
+    loadedCases.value.cases,
+    candidateExecutions.value,
+  );
+  if (!candidateEvaluation.ok) {
+    return {
+      ok: false,
+      error: withContext(candidateEvaluation.error, "candidate"),
+    };
+  }
+  const compared = compareEvaluations(
+    loadedCases.value.cases,
+    baselineEvaluation.value.evaluation,
+    candidateEvaluation.value.evaluation,
+  );
+  if (!compared.ok) return compared;
+  const written = await writeArtifactBundle({
+    runsDirectory,
+    manifest: manifest.value,
+    loadedCases: loadedCases.value,
+    baselineExecutions: baselineExecutions.value,
+    candidateExecutions: candidateExecutions.value,
+    baselineEvaluation: baselineEvaluation.value.evaluation,
+    candidateEvaluation: candidateEvaluation.value.evaluation,
+    comparison: compared.value.comparison,
+  });
+  if (!written.ok) return written;
+  return {
+    ok: true,
+    value: {
+      directory: written.value.directory,
+      published: written.value.published,
+      passedCaseCount: candidateEvaluation.value.evaluation.passedCaseCount,
+      caseCount: candidateEvaluation.value.evaluation.caseCount,
+      failedCaseIds: candidateEvaluation.value.evaluation.failedCaseIds,
+      overallPassed: compared.value.overallPassed,
+    },
+  };
+}
+
+async function evaluate(options: CliOptions): Promise<Result<CompletedEvaluation>> {
+  const snapshots: EvaluationSnapshots = {};
+  let primary: Result<CompletedEvaluation>;
+  try {
+    primary = await evaluatePrimary(options, snapshots);
+  } catch (error) {
+    primary = {
+      ok: false,
+      error: {
+        _tag: "SandboxUnavailable",
+        message: `Evaluation orchestration failed: ${error instanceof Error ? error.message : String(error)}`,
       },
     };
-  } finally {
-    await cleanupSnapshots([baselineSnapshot, candidateSnapshot]);
   }
+  const cleanup = await cleanupSnapshots(snapshots);
+  return combineEvaluationAndCleanup(primary, cleanup);
 }
 
 function exitCode(error: LabError): number {

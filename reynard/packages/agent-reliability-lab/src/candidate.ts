@@ -23,8 +23,11 @@ import {
 import { canonicalJson, sha256 } from "./canonical-json.js";
 import {
   CandidateDefinitionSchema,
+  ResolvedImageSchema,
   V1_INPUT_LIMITS,
   type CandidateDefinition,
+  type ResolvedCandidate,
+  type ResolvedImage,
 } from "./contracts.js";
 import type { Result } from "./errors.js";
 
@@ -45,6 +48,24 @@ export interface CandidateSnapshot {
 export interface CandidateSnapshotOptions {
   readonly stagingRoot?: string;
 }
+
+interface SnapshotOwnership {
+  readonly stagingRoot: string;
+  readonly stagingDevice: number;
+  readonly stagingInode: number;
+  readonly snapshotPath: string;
+  readonly snapshotDevice: number;
+  readonly snapshotInode: number;
+  readonly definitionPath: string;
+  readonly sourcePath: string;
+  readonly definitionIdentity: string;
+  readonly sourceDigest: `sha256:${string}`;
+  active: boolean;
+}
+
+type OwnedSnapshot = CandidateSnapshot | ResolvedCandidate;
+
+const SNAPSHOT_OWNERSHIP = new WeakMap<object, SnapshotOwnership>();
 
 interface SourceEntry {
   readonly relativePath: string;
@@ -221,22 +242,98 @@ async function resolveSourceDirectory(
   return currentPath;
 }
 
+function snapshotMatchesOwnership(
+  snapshot: OwnedSnapshot,
+  ownership: SnapshotOwnership,
+): boolean {
+  return (
+    snapshot.snapshotPath === ownership.snapshotPath &&
+    snapshot.definitionPath === ownership.definitionPath &&
+    snapshot.sourcePath === ownership.sourcePath &&
+    snapshot.definition.source.digest === ownership.sourceDigest &&
+    canonicalJson(snapshot.definition) === ownership.definitionIdentity
+  );
+}
+
+export async function verifyCandidateSnapshotOwnership(
+  snapshot: OwnedSnapshot,
+  expectedStagingRoot?: string,
+): Promise<Result<void>> {
+  const ownership = SNAPSHOT_OWNERSHIP.get(snapshot);
+  if (ownership === undefined || !ownership.active) {
+    return invalidInput("Candidate snapshot is not owned by this process");
+  }
+  try {
+    const resolvedStagingRoot = resolve(ownership.stagingRoot);
+    if (
+      (expectedStagingRoot !== undefined &&
+        resolvedStagingRoot !== resolve(expectedStagingRoot)) ||
+      dirname(ownership.snapshotPath) !== resolvedStagingRoot ||
+      !snapshotMatchesOwnership(snapshot, ownership)
+    ) {
+      return invalidInput("Candidate snapshot ownership does not match its staging root");
+    }
+    const currentUid = process.getuid?.();
+    const staging = await lstat(resolvedStagingRoot);
+    if (
+      !staging.isDirectory() ||
+      staging.isSymbolicLink() ||
+      staging.dev !== ownership.stagingDevice ||
+      staging.ino !== ownership.stagingInode ||
+      (currentUid !== undefined && staging.uid !== currentUid) ||
+      (staging.mode & 0o077) !== 0
+    ) {
+      return invalidInput("Candidate staging root is no longer owner-controlled");
+    }
+    const candidate = await lstat(ownership.snapshotPath);
+    if (
+      !candidate.isDirectory() ||
+      candidate.isSymbolicLink() ||
+      candidate.dev !== ownership.snapshotDevice ||
+      candidate.ino !== ownership.snapshotInode ||
+      (currentUid !== undefined && candidate.uid !== currentUid) ||
+      (candidate.mode & 0o022) !== 0
+    ) {
+      return invalidInput("Candidate snapshot is no longer an owned directory");
+    }
+    return { ok: true, value: undefined };
+  } catch (error) {
+    return invalidInput(
+      `Could not verify candidate snapshot ownership: ${errorMessage(error)}`,
+    );
+  }
+}
+
 export async function cleanupCandidateSnapshot(
-  snapshot: Pick<CandidateSnapshot, "snapshotPath">,
+  snapshot: OwnedSnapshot,
 ): Promise<void> {
-  await rm(snapshot.snapshotPath, { recursive: true, force: true });
+  const registered = SNAPSHOT_OWNERSHIP.get(snapshot);
+  if (registered === undefined) {
+    throw new Error("Candidate snapshot is not owned by this process");
+  }
+  if (!registered.active) return;
+  const owned = await verifyCandidateSnapshotOwnership(snapshot);
+  if (!owned.ok) throw new Error(owned.error.message);
+  const ownership = SNAPSHOT_OWNERSHIP.get(snapshot);
+  if (ownership === undefined) {
+    throw new Error("Candidate snapshot is not owned by this process");
+  }
+  await rm(ownership.snapshotPath, { recursive: true, force: false });
+  ownership.active = false;
 }
 
 export async function verifyCandidateSnapshot(
-  snapshot: CandidateSnapshot,
+  snapshot: OwnedSnapshot,
 ): Promise<Result<void>> {
   try {
+    const owned = await verifyCandidateSnapshotOwnership(snapshot);
+    if (!owned.ok) return owned;
     const metadata = await lstat(snapshot.snapshotPath);
     if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
       return invalidInput("Candidate snapshot is not a non-symlink directory");
     }
     const digest = sourceDigest(await collectSource(snapshot.snapshotPath));
-    if (digest !== snapshot.sourceDigest) {
+    if (digest !== snapshot.definition.source.digest) {
       return invalidInput("Candidate snapshot changed after validation");
     }
     return { ok: true, value: undefined };
@@ -245,6 +342,39 @@ export async function verifyCandidateSnapshot(
       `Could not verify candidate snapshot: ${errorMessage(error)}`,
     );
   }
+}
+
+export async function resolveCandidateSnapshot(
+  snapshot: CandidateSnapshot,
+  image: ResolvedImage,
+): Promise<Result<ResolvedCandidate>> {
+  const owned = await verifyCandidateSnapshotOwnership(snapshot);
+  if (!owned.ok) return owned;
+  const parsedImage = ResolvedImageSchema.safeParse(image);
+  if (!parsedImage.success) {
+    return invalidInput(
+      `Invalid resolved image: ${parsedImage.error.issues.map((issue) => issue.message).join("; ")}`,
+    );
+  }
+  if (
+    parsedImage.data.reference !== snapshot.definition.image ||
+    parsedImage.data.platform !== snapshot.definition.platform
+  ) {
+    return invalidInput("Resolved image does not match the candidate definition");
+  }
+  const ownership = SNAPSHOT_OWNERSHIP.get(snapshot);
+  if (ownership === undefined) {
+    return invalidInput("Candidate snapshot is not owned by this process");
+  }
+  const candidate: ResolvedCandidate = Object.freeze({
+    definition: snapshot.definition,
+    definitionPath: snapshot.definitionPath,
+    sourcePath: snapshot.sourcePath,
+    snapshotPath: snapshot.snapshotPath,
+    image: parsedImage.data,
+  });
+  SNAPSHOT_OWNERSHIP.set(candidate, ownership);
+  return { ok: true, value: candidate };
 }
 
 export async function loadCandidateSnapshot(
@@ -286,8 +416,9 @@ export async function loadCandidateSnapshot(
       return invalidInput("Candidate source digest does not match its declaration");
     }
 
-    const stagingRoot =
-      options.stagingRoot ?? join(defaultLabStateRoot(), "staging");
+    const stagingRoot = resolve(
+      options.stagingRoot ?? join(defaultLabStateRoot(), "staging"),
+    );
     await mkdir(stagingRoot, { recursive: true, mode: 0o700 });
     const stagingMetadata = await lstat(stagingRoot);
     if (!stagingMetadata.isDirectory() || stagingMetadata.isSymbolicLink()) {
@@ -298,7 +429,12 @@ export async function loadCandidateSnapshot(
       throw new Error("Candidate staging root is not owned by the current user");
     }
     await chmod(stagingRoot, 0o700);
-    if (((await lstat(stagingRoot)).mode & 0o077) !== 0) {
+    const privateStagingMetadata = await lstat(stagingRoot);
+    if (
+      privateStagingMetadata.dev !== stagingMetadata.dev ||
+      privateStagingMetadata.ino !== stagingMetadata.ino ||
+      (privateStagingMetadata.mode & 0o077) !== 0
+    ) {
       throw new Error("Candidate staging root could not be made private");
     }
     snapshotPath = await mkdtemp(
@@ -322,15 +458,30 @@ export async function loadCandidateSnapshot(
       throw new Error("Candidate source changed while the snapshot was created");
     }
 
+    const snapshotMetadata = await lstat(snapshotPath);
+    const snapshot: CandidateSnapshot = Object.freeze({
+      definition: parsed.data,
+      definitionPath: absoluteDefinitionPath,
+      sourcePath,
+      snapshotPath,
+      sourceDigest: digest,
+    });
+    SNAPSHOT_OWNERSHIP.set(snapshot, {
+      stagingRoot: resolve(stagingRoot),
+      stagingDevice: privateStagingMetadata.dev,
+      stagingInode: privateStagingMetadata.ino,
+      snapshotPath,
+      snapshotDevice: snapshotMetadata.dev,
+      snapshotInode: snapshotMetadata.ino,
+      definitionPath: absoluteDefinitionPath,
+      sourcePath,
+      definitionIdentity: canonicalJson(parsed.data),
+      sourceDigest: digest,
+      active: true,
+    });
     return {
       ok: true,
-      value: {
-        definition: parsed.data,
-        definitionPath: absoluteDefinitionPath,
-        sourcePath,
-        snapshotPath,
-        sourceDigest: digest,
-      },
+      value: snapshot,
     };
   } catch (error) {
     if (snapshotPath !== undefined) {
