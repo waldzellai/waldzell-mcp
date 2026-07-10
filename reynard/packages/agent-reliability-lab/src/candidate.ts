@@ -6,7 +6,6 @@ import {
   mkdtemp,
   open,
   opendir,
-  rm,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -30,6 +29,14 @@ import {
   type ResolvedImage,
 } from "./contracts.js";
 import type { Result } from "./errors.js";
+import {
+  directoryIdentity,
+  matchesDirectoryIdentity,
+  normalizePrivateDirectory,
+  removeOwnedDirectory,
+  type DirectoryIdentity,
+  type QuarantineRemovalOptions,
+} from "./filesystem.js";
 
 export const LAB_NAMESPACE = "reynard-lab-v1";
 
@@ -47,15 +54,14 @@ export interface CandidateSnapshot {
 
 export interface CandidateSnapshotOptions {
   readonly stagingRoot?: string;
+  readonly directoryOperations?: QuarantineRemovalOptions;
 }
 
 interface SnapshotOwnership {
   readonly stagingRoot: string;
-  readonly stagingDevice: number;
-  readonly stagingInode: number;
+  readonly stagingIdentity: DirectoryIdentity;
   readonly snapshotPath: string;
-  readonly snapshotDevice: number;
-  readonly snapshotInode: number;
+  readonly snapshotIdentity: DirectoryIdentity;
   readonly definitionPath: string;
   readonly sourcePath: string;
   readonly definitionIdentity: string;
@@ -273,25 +279,16 @@ export async function verifyCandidateSnapshotOwnership(
     ) {
       return invalidInput("Candidate snapshot ownership does not match its staging root");
     }
-    const currentUid = process.getuid?.();
     const staging = await lstat(resolvedStagingRoot);
     if (
-      !staging.isDirectory() ||
-      staging.isSymbolicLink() ||
-      staging.dev !== ownership.stagingDevice ||
-      staging.ino !== ownership.stagingInode ||
-      (currentUid !== undefined && staging.uid !== currentUid) ||
+      !matchesDirectoryIdentity(staging, ownership.stagingIdentity) ||
       (staging.mode & 0o077) !== 0
     ) {
       return invalidInput("Candidate staging root is no longer owner-controlled");
     }
     const candidate = await lstat(ownership.snapshotPath);
     if (
-      !candidate.isDirectory() ||
-      candidate.isSymbolicLink() ||
-      candidate.dev !== ownership.snapshotDevice ||
-      candidate.ino !== ownership.snapshotInode ||
-      (currentUid !== undefined && candidate.uid !== currentUid) ||
+      !matchesDirectoryIdentity(candidate, ownership.snapshotIdentity) ||
       (candidate.mode & 0o022) !== 0
     ) {
       return invalidInput("Candidate snapshot is no longer an owned directory");
@@ -306,6 +303,7 @@ export async function verifyCandidateSnapshotOwnership(
 
 export async function cleanupCandidateSnapshot(
   snapshot: OwnedSnapshot,
+  operations: QuarantineRemovalOptions = {},
 ): Promise<void> {
   const registered = SNAPSHOT_OWNERSHIP.get(snapshot);
   if (registered === undefined) {
@@ -318,7 +316,16 @@ export async function cleanupCandidateSnapshot(
   if (ownership === undefined) {
     throw new Error("Candidate snapshot is not owned by this process");
   }
-  await rm(ownership.snapshotPath, { recursive: true, force: false });
+  await removeOwnedDirectory(
+    ownership.snapshotPath,
+    ownership.stagingRoot,
+    ownership.snapshotIdentity,
+    {
+      ...operations,
+      recoverableName: (token) =>
+        `${LAB_NAMESPACE}-p${process.pid}-quarantine-${token}`,
+    },
+  );
   ownership.active = false;
 }
 
@@ -382,6 +389,8 @@ export async function loadCandidateSnapshot(
   options: CandidateSnapshotOptions = {},
 ): Promise<Result<CandidateSnapshot>> {
   let snapshotPath: string | undefined;
+  let snapshotIdentity: DirectoryIdentity | undefined;
+  let stagingRoot: string | undefined;
   try {
     const absoluteDefinitionPath = resolve(definitionPath);
     const definitionMetadata = await lstat(absoluteDefinitionPath);
@@ -416,30 +425,17 @@ export async function loadCandidateSnapshot(
       return invalidInput("Candidate source digest does not match its declaration");
     }
 
-    const stagingRoot = resolve(
+    stagingRoot = resolve(
       options.stagingRoot ?? join(defaultLabStateRoot(), "staging"),
     );
     await mkdir(stagingRoot, { recursive: true, mode: 0o700 });
-    const stagingMetadata = await lstat(stagingRoot);
-    if (!stagingMetadata.isDirectory() || stagingMetadata.isSymbolicLink()) {
-      throw new Error("Candidate staging root must be a non-symlink directory");
-    }
-    const currentUid = process.getuid?.();
-    if (currentUid !== undefined && stagingMetadata.uid !== currentUid) {
-      throw new Error("Candidate staging root is not owned by the current user");
-    }
-    await chmod(stagingRoot, 0o700);
-    const privateStagingMetadata = await lstat(stagingRoot);
-    if (
-      privateStagingMetadata.dev !== stagingMetadata.dev ||
-      privateStagingMetadata.ino !== stagingMetadata.ino ||
-      (privateStagingMetadata.mode & 0o077) !== 0
-    ) {
-      throw new Error("Candidate staging root could not be made private");
-    }
+    const stagingIdentity = await normalizePrivateDirectory(stagingRoot, {
+      rejectWritable: false,
+    });
     snapshotPath = await mkdtemp(
       join(stagingRoot, `${LAB_NAMESPACE}-p${process.pid}-`),
     );
+    snapshotIdentity = directoryIdentity(await lstat(snapshotPath));
     for (const entry of entries) {
       const destination = join(snapshotPath, ...entry.relativePath.split("/"));
       await mkdir(dirname(destination), { recursive: true, mode: 0o755 });
@@ -448,6 +444,17 @@ export async function loadCandidateSnapshot(
       await chmod(destination, 0o644 | entry.executableBits);
     }
     await chmod(snapshotPath, 0o755);
+    const finalizedSnapshotIdentity = directoryIdentity(
+      await lstat(snapshotPath),
+    );
+    if (
+      finalizedSnapshotIdentity.dev !== snapshotIdentity.dev ||
+      finalizedSnapshotIdentity.ino !== snapshotIdentity.ino ||
+      finalizedSnapshotIdentity.uid !== snapshotIdentity.uid
+    ) {
+      throw new Error("Candidate snapshot identity changed while it was finalized");
+    }
+    snapshotIdentity = finalizedSnapshotIdentity;
 
     const snapshotEntries = await collectSource(snapshotPath);
     if (sourceDigest(snapshotEntries) !== digest) {
@@ -458,7 +465,6 @@ export async function loadCandidateSnapshot(
       throw new Error("Candidate source changed while the snapshot was created");
     }
 
-    const snapshotMetadata = await lstat(snapshotPath);
     const snapshot: CandidateSnapshot = Object.freeze({
       definition: parsed.data,
       definitionPath: absoluteDefinitionPath,
@@ -468,11 +474,9 @@ export async function loadCandidateSnapshot(
     });
     SNAPSHOT_OWNERSHIP.set(snapshot, {
       stagingRoot: resolve(stagingRoot),
-      stagingDevice: privateStagingMetadata.dev,
-      stagingInode: privateStagingMetadata.ino,
+      stagingIdentity,
       snapshotPath,
-      snapshotDevice: snapshotMetadata.dev,
-      snapshotInode: snapshotMetadata.ino,
+      snapshotIdentity,
       definitionPath: absoluteDefinitionPath,
       sourcePath,
       definitionIdentity: canonicalJson(parsed.data),
@@ -486,7 +490,21 @@ export async function loadCandidateSnapshot(
   } catch (error) {
     if (snapshotPath !== undefined) {
       try {
-        await rm(snapshotPath, { recursive: true, force: true });
+        if (snapshotIdentity === undefined || stagingRoot === undefined) {
+          throw new Error(
+            "candidate snapshot identity was not established; preserving staging path",
+          );
+        }
+        await removeOwnedDirectory(
+          snapshotPath,
+          stagingRoot,
+          snapshotIdentity,
+          {
+            ...options.directoryOperations,
+            recoverableName: (token) =>
+              `${LAB_NAMESPACE}-p${process.pid}-quarantine-${token}`,
+          },
+        );
       } catch (cleanupError) {
         return invalidInput(
           `Could not load candidate: ${errorMessage(error)}; staging cleanup failed: ${errorMessage(cleanupError)}`,

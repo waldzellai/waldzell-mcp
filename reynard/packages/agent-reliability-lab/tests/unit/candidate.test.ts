@@ -122,6 +122,54 @@ describe("candidate loader", () => {
     expect(await readFile(sentinel, "utf8")).toBe("preserve me");
   });
 
+  test("preserves a replacement installed at the owned snapshot rename boundary", async () => {
+    const root = await temporaryDirectory("reynard-snapshot-cleanup-race-");
+    const sourceDirectory = join(root, "candidate", "src");
+    const stagingRoot = join(root, "state", "staging");
+    await mkdir(sourceDirectory, { recursive: true });
+    const bytes = Buffer.from("safe");
+    await writeFile(join(sourceDirectory, "main.sh"), bytes);
+    const definitionPath = join(root, "candidate", "candidate.json");
+    await writeDefinition(
+      definitionPath,
+      "src",
+      digestForFiles([{ relativePath: "main.sh", bytes, executableBits: 0 }]),
+    );
+    const loaded = await loadCandidateSnapshot(definitionPath, { stagingRoot });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    const original = join(stagingRoot, "owned-backup");
+    const sentinel = join(loaded.value.snapshotPath, "keep.txt");
+    const removedInodes: number[] = [];
+
+    await expect(
+      cleanupCandidateSnapshot(loaded.value, {
+        beforeRename: async () => {
+          await rename(loaded.value.snapshotPath, original);
+          await mkdir(loaded.value.snapshotPath, { mode: 0o755 });
+          await chmod(loaded.value.snapshotPath, 0o755);
+          await writeFile(sentinel, "foreign replacement");
+        },
+        remove: async (path, options) => {
+          removedInodes.push((await lstat(path)).ino);
+          await rm(path, options);
+        },
+      }),
+    ).rejects.toThrow(/identity/i);
+
+    const [preservedName] = (await readdir(stagingRoot)).filter((name) =>
+      name.startsWith(".reynard-preserved-foreign-"),
+    );
+    expect(preservedName).toBeDefined();
+    if (preservedName === undefined) return;
+    const preserved = join(stagingRoot, preservedName);
+    expect(await readFile(join(preserved, "keep.txt"), "utf8")).toBe(
+      "foreign replacement",
+    );
+    expect(removedInodes).not.toContain((await lstat(preserved)).ino);
+    expect((await stat(original)).isDirectory()).toBe(true);
+  });
+
   test("reports cleanup failure when the owned staging root loses privacy", async () => {
     const root = await temporaryDirectory("reynard-checked-cleanup-");
     const sourceDirectory = join(root, "candidate", "src");
@@ -688,6 +736,78 @@ describe("candidate loader", () => {
       error: expect.objectContaining({ _tag: "InvalidInput" }),
     });
     expect(await readdir(stagingRoot)).toEqual([]);
+  });
+
+  test("preserves a replacement installed during failed snapshot rollback", async () => {
+    const root = await temporaryDirectory("reynard-source-rollback-race-");
+    const sourceDirectory = join(root, "candidate", "src");
+    const stagingRoot = join(root, "state", "staging");
+    await mkdir(sourceDirectory, { recursive: true });
+    await mkdir(stagingRoot, { recursive: true });
+    const originalBytes = Buffer.alloc(V1_INPUT_LIMITS.sourceFileBytes, 0x61);
+    const sourceFile = join(sourceDirectory, "payload");
+    await writeFile(sourceFile, originalBytes);
+    const definitionPath = join(root, "candidate", "candidate.json");
+    await writeDefinition(
+      definitionPath,
+      "src",
+      digestForFiles([
+        {
+          relativePath: "payload",
+          bytes: originalBytes,
+          executableBits: 0,
+        },
+      ]),
+    );
+    const mutateWhenStagingStarts = (async () => {
+      for (;;) {
+        if ((await readdir(stagingRoot)).length > 0) break;
+        await new Promise<void>((resolveImmediate) => setImmediate(resolveImmediate));
+      }
+      await writeFile(sourceFile, Buffer.alloc(originalBytes.byteLength, 0x62));
+    })();
+    let replacementPath: string | undefined;
+    let originalSnapshot: string | undefined;
+    const removedInodes: number[] = [];
+
+    const result = await loadCandidateSnapshot(definitionPath, {
+      stagingRoot,
+      directoryOperations: {
+        beforeRename: async () => {
+          const [snapshotName] = await readdir(stagingRoot);
+          if (snapshotName === undefined) throw new Error("missing snapshot");
+          replacementPath = join(stagingRoot, snapshotName);
+          originalSnapshot = join(stagingRoot, "owned-snapshot-backup");
+          await rename(replacementPath, originalSnapshot);
+          await mkdir(replacementPath, { mode: 0o755 });
+          await writeFile(join(replacementPath, "keep.txt"), "foreign replacement");
+        },
+        remove: async (path, options) => {
+          removedInodes.push((await lstat(path)).ino);
+          await rm(path, options);
+        },
+      },
+    });
+    await mutateWhenStagingStarts;
+
+    expect(result).toEqual({
+      ok: false,
+      error: expect.objectContaining({ _tag: "InvalidInput" }),
+    });
+    expect(replacementPath).toBeDefined();
+    expect(originalSnapshot).toBeDefined();
+    if (replacementPath === undefined || originalSnapshot === undefined) return;
+    const [preservedName] = (await readdir(stagingRoot)).filter((name) =>
+      name.startsWith(".reynard-preserved-foreign-"),
+    );
+    expect(preservedName).toBeDefined();
+    if (preservedName === undefined) return;
+    const preserved = join(stagingRoot, preservedName);
+    expect(await readFile(join(preserved, "keep.txt"), "utf8")).toBe(
+      "foreign replacement",
+    );
+    expect(removedInodes).not.toContain((await lstat(preserved)).ino);
+    expect((await stat(originalSnapshot)).isDirectory()).toBe(true);
   });
 });
 

@@ -1,5 +1,6 @@
 import {
   chmod,
+  lstat,
   mkdtemp,
   mkdir,
   readFile,
@@ -597,6 +598,59 @@ describe("artifact bundles", () => {
     await expectNoStagingSibling(runsDirectory);
   });
 
+  test("preserves a replacement installed during failed artifact rollback", async () => {
+    const root = await temporaryDirectory("reynard-artifact-rollback-race-");
+    const runsDirectory = join(root, "runs");
+    const input = withRunsDirectory(makeArtifactInput(), runsDirectory);
+    let replacementPath: string | undefined;
+    let originalStage: string | undefined;
+    const removedInodes: number[] = [];
+
+    const result = await writeArtifactBundle(input, {
+      io: {
+        writeFile: async () => {
+          throw new Error("injected write failure");
+        },
+      },
+      directoryOperations: {
+        beforeRename: async () => {
+          const stageName = (await readdir(runsDirectory)).find((name) =>
+            name.includes(".staging-p"),
+          );
+          if (stageName === undefined) throw new Error("missing artifact stage");
+          replacementPath = join(runsDirectory, stageName);
+          originalStage = join(runsDirectory, ".owned-stage-backup");
+          await rename(replacementPath, originalStage);
+          await mkdir(replacementPath, { mode: 0o700 });
+          await writeFile(join(replacementPath, "keep.txt"), "foreign replacement");
+        },
+        remove: async (path, options) => {
+          removedInodes.push((await lstat(path)).ino);
+          await rm(path, options);
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: expect.objectContaining({ _tag: "ArtifactWriteFailed" }),
+    });
+    expect(replacementPath).toBeDefined();
+    expect(originalStage).toBeDefined();
+    if (replacementPath === undefined || originalStage === undefined) return;
+    const [preservedName] = (await readdir(runsDirectory)).filter((name) =>
+      name.startsWith(".reynard-preserved-foreign-"),
+    );
+    expect(preservedName).toBeDefined();
+    if (preservedName === undefined) return;
+    const preserved = join(runsDirectory, preservedName);
+    expect(await readFile(join(preserved, "keep.txt"), "utf8")).toBe(
+      "foreign replacement",
+    );
+    expect(removedInodes).not.toContain((await lstat(preserved)).ino);
+    expect((await stat(originalStage)).isDirectory()).toBe(true);
+  });
+
   test.each([
     [
       "validation",
@@ -858,6 +912,59 @@ describe("artifact bundles", () => {
     expect((await stat(liveStage)).isDirectory()).toBe(true);
     expect((await stat(unrelated)).isDirectory()).toBe(true);
     expect((await stat(finalBundle)).isDirectory()).toBe(true);
+  });
+
+  test("treats a missing fresh-checkout runs directory as no recovery work", async () => {
+    const root = await temporaryDirectory("reynard-artifact-missing-runs-");
+
+    const recovered = await recoverArtifactPublishLocks(join(root, "runs"));
+
+    expect(recovered).toEqual({ ok: true, value: 0 });
+  });
+
+  test("preserves a stale-stage replacement installed at the quarantine boundary", async () => {
+    const root = await temporaryDirectory("reynard-artifact-recovery-race-");
+    const runsDirectory = join(root, "runs");
+    await mkdir(runsDirectory, { mode: 0o700 });
+    const stage = join(
+      runsDirectory,
+      `.${digest("6")}.staging-p999999999-00000000-0000-4000-8000-000000000006`,
+    );
+    const original = join(runsDirectory, ".owned-stage-backup");
+    const sentinel = join(stage, "keep.txt");
+    const removedInodes: number[] = [];
+    await mkdir(stage, { mode: 0o700 });
+
+    const recovered = await recoverArtifactPublishLocks(runsDirectory, {
+      isProcessAlive: () => false,
+      directoryOperations: {
+        beforeRename: async () => {
+          await rename(stage, original);
+          await mkdir(stage, { mode: 0o700 });
+          await writeFile(sentinel, "foreign replacement");
+        },
+        remove: async (path, options) => {
+          removedInodes.push((await lstat(path)).ino);
+          await rm(path, options);
+        },
+      },
+    });
+
+    expect(recovered).toEqual({
+      ok: false,
+      error: expect.objectContaining({ _tag: "ArtifactWriteFailed" }),
+    });
+    const [preservedName] = (await readdir(runsDirectory)).filter((name) =>
+      name.startsWith(".reynard-preserved-foreign-"),
+    );
+    expect(preservedName).toBeDefined();
+    if (preservedName === undefined) return;
+    const preserved = join(runsDirectory, preservedName);
+    expect(await readFile(join(preserved, "keep.txt"), "utf8")).toBe(
+      "foreign replacement",
+    );
+    expect(removedInodes).not.toContain((await lstat(preserved)).ino);
+    expect((await stat(original)).isDirectory()).toBe(true);
   });
 
   test("preserves an active same-process artifact staging writer", async () => {

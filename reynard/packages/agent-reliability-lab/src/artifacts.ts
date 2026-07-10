@@ -1,13 +1,11 @@
 import { randomUUID } from "node:crypto";
 import {
-  chmod,
   lstat,
   mkdir,
   open,
   readFile,
   readdir,
   rename,
-  rm,
   unlink,
   writeFile,
   type FileHandle,
@@ -36,6 +34,13 @@ import {
   type EvaluatedExecutions,
 } from "./evaluator.js";
 import type { Result } from "./errors.js";
+import {
+  directoryIdentity,
+  normalizePrivateDirectory,
+  removeOwnedDirectory,
+  type DirectoryIdentity,
+  type QuarantineRemovalOptions,
+} from "./filesystem.js";
 import { createRunManifest } from "./manifest.js";
 import { parseEvaluationCasesText } from "./runner.js";
 
@@ -57,11 +62,13 @@ export interface ArtifactWriteOptions {
   readonly releasePublishLock?: (lockPath: string) => Promise<void>;
   readonly lockTimeoutMillis?: number;
   readonly lockRetryMillis?: number;
+  readonly directoryOperations?: QuarantineRemovalOptions;
 }
 
 export interface ArtifactRecoveryOptions {
   readonly staleMalformedLockMillis?: number;
   readonly isProcessAlive?: (pid: number) => boolean;
+  readonly directoryOperations?: QuarantineRemovalOptions;
 }
 
 export interface ArtifactWriteResult {
@@ -143,31 +150,13 @@ function processIsAlive(pid: number): boolean {
 }
 
 async function assertPrivateRunsDirectory(path: string): Promise<void> {
-  const directory = await lstat(path);
-  const currentUid = process.getuid?.();
-  if (
-    !directory.isDirectory() ||
-    directory.isSymbolicLink() ||
-    (currentUid !== undefined && directory.uid !== currentUid) ||
-    (directory.mode & 0o022) !== 0
-  ) {
+  try {
+    await normalizePrivateDirectory(path);
+  } catch (error) {
+    if (fileErrorCode(error) === "ENOENT") throw error;
     throw new Error(
-      "Artifact runs directory must be an owner-only real directory",
+      `Artifact runs directory must be an owner-only real directory: ${errorMessage(error)}`,
     );
-  }
-  if ((directory.mode & 0o077) !== 0) {
-    await chmod(path, 0o700);
-  }
-  const tightened = await lstat(path);
-  if (
-    !tightened.isDirectory() ||
-    tightened.isSymbolicLink() ||
-    tightened.dev !== directory.dev ||
-    tightened.ino !== directory.ino ||
-    (currentUid !== undefined && tightened.uid !== currentUid) ||
-    (tightened.mode & 0o077) !== 0
-  ) {
-    throw new Error("Artifact runs directory could not be made owner-only");
   }
 }
 
@@ -189,18 +178,25 @@ function parsePublishLockRecord(value: unknown): PublishLockRecord | undefined {
 }
 
 interface ArtifactStagingOwner {
+  readonly runId: `sha256:${string}`;
   readonly pid: number;
   readonly token: string;
 }
 
 function parseArtifactStagingOwner(name: string): ArtifactStagingOwner | undefined {
-  const match = /^\.sha256:[0-9a-f]{64}\.staging-p([1-9][0-9]*)-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/.exec(
+  const match = /^\.(sha256:[0-9a-f]{64})\.staging-p([1-9][0-9]*)-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/.exec(
     name,
   );
-  if (match?.[1] === undefined || match[2] === undefined) return undefined;
-  const pid = Number(match[1]);
+  if (
+    match?.[1] === undefined ||
+    match[2] === undefined ||
+    match[3] === undefined
+  ) {
+    return undefined;
+  }
+  const pid = Number(match[2]);
   return Number.isSafeInteger(pid) && pid > 0
-    ? { pid, token: match[2] }
+    ? { runId: match[1] as `sha256:${string}`, pid, token: match[3] }
     : undefined;
 }
 
@@ -364,7 +360,16 @@ export async function recoverArtifactPublishLocks(
           !ACTIVE_STAGING_TOKENS.has(stagingOwner.token)) ||
         !isProcessAlive(stagingOwner.pid);
       if (stale) {
-        await rm(stagingPath, { recursive: true, force: false });
+        await removeOwnedDirectory(
+          stagingPath,
+          absoluteRunsDirectory,
+          directoryIdentity(stagingStat),
+          {
+            ...options.directoryOperations,
+            recoverableName: (token) =>
+              `.${stagingOwner.runId}.staging-p${stagingOwner.pid}-${token}`,
+          },
+        );
         removed += 1;
       }
     }
@@ -870,6 +875,7 @@ export async function writeArtifactBundle(
     `.${built.value.manifest.runId}.publish-lock`,
   );
   let stagingDirectory: string | undefined;
+  let stagingIdentity: DirectoryIdentity | undefined;
   let stagingToken: string | undefined;
   let publishLock: PublishLock | undefined;
   let publicationCommitted = false;
@@ -886,6 +892,7 @@ export async function writeArtifactBundle(
     ACTIVE_STAGING_TOKENS.add(stagingToken);
     await mkdir(proposedStagingDirectory, { mode: 0o700 });
     stagingDirectory = proposedStagingDirectory;
+    stagingIdentity = directoryIdentity(await lstat(stagingDirectory));
     for (const name of ARTIFACT_NAMES) {
       await io.writeFile(join(stagingDirectory, name), built.value.files[name]);
     }
@@ -914,6 +921,7 @@ export async function writeArtifactBundle(
           try {
             await io.rename(stagingDirectory, target);
             stagingDirectory = undefined;
+            stagingIdentity = undefined;
             publicationCommitted = true;
             outcome = {
               ok: true,
@@ -949,7 +957,21 @@ export async function writeArtifactBundle(
   }
   if (stagingDirectory !== undefined) {
     try {
-      await rm(stagingDirectory, { recursive: true, force: true });
+      if (stagingIdentity === undefined) {
+        throw new Error(
+          "artifact staging identity was not established; preserving staging path",
+        );
+      }
+      await removeOwnedDirectory(
+        stagingDirectory,
+        runsDirectory,
+        stagingIdentity,
+        {
+          ...options.directoryOperations,
+          recoverableName: (token) =>
+            `.${built.value.manifest.runId}.staging-p${process.pid}-${token}`,
+        },
+      );
     } catch (error) {
       outcome = artifactWriteFailed(
         `Could not clean artifact staging directory: ${errorMessage(error)}`,
