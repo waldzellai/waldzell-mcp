@@ -3,7 +3,6 @@ import {
   chmod,
   lstat,
   mkdir,
-  mkdtemp,
   open,
   readFile,
   readdir,
@@ -55,6 +54,7 @@ export interface ArtifactIo {
 
 export interface ArtifactWriteOptions {
   readonly io?: Partial<ArtifactIo>;
+  readonly releasePublishLock?: (lockPath: string) => Promise<void>;
   readonly lockTimeoutMillis?: number;
   readonly lockRetryMillis?: number;
 }
@@ -97,6 +97,7 @@ const DEFAULT_LOCK_TIMEOUT_MILLIS = 5_000;
 const DEFAULT_LOCK_RETRY_MILLIS = 10;
 const DEFAULT_STALE_LOCK_MILLIS = 300_000;
 const ACTIVE_LOCK_TOKENS = new Set<string>();
+const ACTIVE_STAGING_TOKENS = new Set<string>();
 
 const defaultIo: ArtifactIo = {
   readFile: async (path) => readFile(path),
@@ -187,6 +188,22 @@ function parsePublishLockRecord(value: unknown): PublishLockRecord | undefined {
     : undefined;
 }
 
+interface ArtifactStagingOwner {
+  readonly pid: number;
+  readonly token: string;
+}
+
+function parseArtifactStagingOwner(name: string): ArtifactStagingOwner | undefined {
+  const match = /^\.sha256:[0-9a-f]{64}\.staging-p([1-9][0-9]*)-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/.exec(
+    name,
+  );
+  if (match?.[1] === undefined || match[2] === undefined) return undefined;
+  const pid = Number(match[1]);
+  return Number.isSafeInteger(pid) && pid > 0
+    ? { pid, token: match[2] }
+    : undefined;
+}
+
 async function writeLockRecord(
   handle: FileHandle,
   record: PublishLockRecord,
@@ -260,10 +277,13 @@ async function acquirePublishLock(
   }
 }
 
-async function releasePublishLock(lock: PublishLock): Promise<Result<void>> {
+async function releasePublishLock(
+  lock: PublishLock,
+  unlinkLock: (lockPath: string) => Promise<void>,
+): Promise<Result<void>> {
   try {
     await lock.handle.close();
-    await unlink(lock.path);
+    await unlinkLock(lock.path);
     return { ok: true, value: undefined };
   } catch (error) {
     await lock.handle.close().catch(() => undefined);
@@ -276,8 +296,8 @@ async function releasePublishLock(lock: PublishLock): Promise<Result<void>> {
 }
 
 /**
- * Removes dead-owner publish locks during the single-owner startup preflight.
- * Ordinary concurrent publishers never steal or unlink another writer's lock.
+ * Removes dead-owner publish locks and artifact staging directories during the
+ * single-owner startup preflight. Active concurrent publishers remain intact.
  */
 export async function recoverArtifactPublishLocks(
   runsDirectory: string,
@@ -297,30 +317,54 @@ export async function recoverArtifactPublishLocks(
     });
     let removed = 0;
     for (const entry of entries) {
-      if (!/^\.sha256:[0-9a-f]{64}\.publish-lock$/.test(entry.name)) {
+      if (/^\.sha256:[0-9a-f]{64}\.publish-lock$/.test(entry.name)) {
+        const lockPath = join(absoluteRunsDirectory, entry.name);
+        const lockStat = await lstat(lockPath);
+        if (!lockStat.isFile() || lockStat.isSymbolicLink()) {
+          return artifactWriteFailed(`Publish lock is not regular: ${entry.name}`);
+        }
+        let record: PublishLockRecord | undefined;
+        try {
+          const decoded: unknown = JSON.parse(await readFile(lockPath, "utf8"));
+          record = parsePublishLockRecord(decoded);
+        } catch {
+          record = undefined;
+        }
+        const stale =
+          (record !== undefined &&
+            record.pid === process.pid &&
+            !ACTIVE_LOCK_TOKENS.has(record.token)) ||
+          (record !== undefined && !isProcessAlive(record.pid)) ||
+          (record === undefined &&
+            Date.now() - lockStat.mtimeMs >= malformedLockMillis);
+        if (stale) {
+          await unlink(lockPath);
+          removed += 1;
+        }
         continue;
       }
-      const lockPath = join(absoluteRunsDirectory, entry.name);
-      const lockStat = await lstat(lockPath);
-      if (!lockStat.isFile()) {
-        return artifactWriteFailed(`Publish lock is not regular: ${entry.name}`);
-      }
-      let record: PublishLockRecord | undefined;
-      try {
-        const decoded: unknown = JSON.parse(await readFile(lockPath, "utf8"));
-        record = parsePublishLockRecord(decoded);
-      } catch {
-        record = undefined;
+
+      const stagingOwner = parseArtifactStagingOwner(entry.name);
+      if (stagingOwner === undefined) continue;
+      const stagingPath = join(absoluteRunsDirectory, entry.name);
+      const stagingStat = await lstat(stagingPath);
+      const currentUid = process.getuid?.();
+      if (
+        !stagingStat.isDirectory() ||
+        stagingStat.isSymbolicLink() ||
+        (currentUid !== undefined && stagingStat.uid !== currentUid) ||
+        (stagingStat.mode & 0o077) !== 0
+      ) {
+        return artifactWriteFailed(
+          `Artifact staging path is not an owner-only real directory: ${entry.name}`,
+        );
       }
       const stale =
-        (record !== undefined &&
-          record.pid === process.pid &&
-          !ACTIVE_LOCK_TOKENS.has(record.token)) ||
-        (record !== undefined && !isProcessAlive(record.pid)) ||
-        (record === undefined &&
-          Date.now() - lockStat.mtimeMs >= malformedLockMillis);
+        (stagingOwner.pid === process.pid &&
+          !ACTIVE_STAGING_TOKENS.has(stagingOwner.token)) ||
+        !isProcessAlive(stagingOwner.pid);
       if (stale) {
-        await unlink(lockPath);
+        await rm(stagingPath, { recursive: true, force: false });
         removed += 1;
       }
     }
@@ -826,15 +870,22 @@ export async function writeArtifactBundle(
     `.${built.value.manifest.runId}.publish-lock`,
   );
   let stagingDirectory: string | undefined;
+  let stagingToken: string | undefined;
   let publishLock: PublishLock | undefined;
+  let publicationCommitted = false;
   let outcome: Result<ArtifactWriteResult>;
 
   try {
     await mkdir(runsDirectory, { recursive: true, mode: 0o700 });
     await assertPrivateRunsDirectory(runsDirectory);
-    stagingDirectory = await mkdtemp(
-      join(runsDirectory, `.${built.value.manifest.runId}.staging-`),
+    stagingToken = randomUUID();
+    const proposedStagingDirectory = join(
+      runsDirectory,
+      `.${built.value.manifest.runId}.staging-p${process.pid}-${stagingToken}`,
     );
+    ACTIVE_STAGING_TOKENS.add(stagingToken);
+    await mkdir(proposedStagingDirectory, { mode: 0o700 });
+    stagingDirectory = proposedStagingDirectory;
     for (const name of ARTIFACT_NAMES) {
       await io.writeFile(join(stagingDirectory, name), built.value.files[name]);
     }
@@ -863,6 +914,7 @@ export async function writeArtifactBundle(
           try {
             await io.rename(stagingDirectory, target);
             stagingDirectory = undefined;
+            publicationCommitted = true;
             outcome = {
               ok: true,
               value: { directory: target, published: true },
@@ -889,17 +941,23 @@ export async function writeArtifactBundle(
   }
 
   if (publishLock !== undefined) {
-    const released = await releasePublishLock(publishLock);
-    if (!released.ok) outcome = released;
+    const released = await releasePublishLock(
+      publishLock,
+      options.releasePublishLock ?? unlink,
+    );
+    if (!released.ok && !publicationCommitted) outcome = released;
   }
   if (stagingDirectory !== undefined) {
     try {
       await rm(stagingDirectory, { recursive: true, force: true });
     } catch (error) {
-      return artifactWriteFailed(
+      outcome = artifactWriteFailed(
         `Could not clean artifact staging directory: ${errorMessage(error)}`,
       );
     }
+  }
+  if (stagingToken !== undefined) {
+    ACTIVE_STAGING_TOKENS.delete(stagingToken);
   }
   return outcome;
 }

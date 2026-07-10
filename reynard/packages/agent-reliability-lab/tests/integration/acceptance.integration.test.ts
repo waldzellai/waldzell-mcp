@@ -712,6 +712,12 @@ describe("public CLI acceptance", () => {
       token: "acceptance-stale",
       createdAtMillis: 0,
     }));
+    const staleStaging = join(
+      runs,
+      `.${`sha256:${"b".repeat(64)}`}.staging-p999999999-00000000-0000-4000-8000-000000000006`,
+    );
+    await mkdir(staleStaging, { mode: 0o700 });
+    await writeFile(join(staleStaging, "partial.tmp"), "interrupted");
     const containerName = `reynard-lab-v1-p999999999-acceptance-${process.pid}`;
     cleanupContainers.add(containerName);
     const created = await docker([
@@ -734,6 +740,7 @@ describe("public CLI acceptance", () => {
 
     expect(result.exitCode).toBe(0);
     await expect(stat(staleLock)).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(staleStaging)).rejects.toMatchObject({ code: "ENOENT" });
     expect((await docker(["ps", "--all", "--quiet", "--filter", `name=^/${containerName}$`])).stdout.trim()).toBe("");
     cleanupContainers.delete(containerName);
     await assertBundle(await runDirectory(cwd), true);

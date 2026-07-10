@@ -7,6 +7,7 @@ import {
   rename,
   rm,
   stat,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -818,6 +819,151 @@ describe("artifact bundles", () => {
     expect(written.ok).toBe(true);
     await expect(stat(lockPath)).rejects.toMatchObject({ code: "ENOENT" });
     await expectNoStagingSibling(runsDirectory, input.manifest.runId);
+  });
+
+  test("recovers only inactive owner-scoped artifact staging directories", async () => {
+    const root = await temporaryDirectory("reynard-artifact-staging-recovery-");
+    const runsDirectory = join(root, "runs");
+    await mkdir(runsDirectory, { mode: 0o700 });
+    const deadRunId = digest("1");
+    const inactiveRunId = digest("2");
+    const liveRunId = digest("3");
+    const deadStage = join(
+      runsDirectory,
+      `.${deadRunId}.staging-p999999999-00000000-0000-4000-8000-000000000001`,
+    );
+    const inactiveStage = join(
+      runsDirectory,
+      `.${inactiveRunId}.staging-p${process.pid}-00000000-0000-4000-8000-000000000002`,
+    );
+    const liveStage = join(
+      runsDirectory,
+      `.${liveRunId}.staging-p123-00000000-0000-4000-8000-000000000003`,
+    );
+    const unrelated = join(runsDirectory, ".unrelated-staging");
+    const finalBundle = join(runsDirectory, digest("4"));
+    await Promise.all(
+      [deadStage, inactiveStage, liveStage, unrelated, finalBundle].map(
+        async (directory) => mkdir(directory, { mode: 0o700 }),
+      ),
+    );
+
+    const recovered = await recoverArtifactPublishLocks(runsDirectory, {
+      isProcessAlive: (pid) => pid === process.pid || pid === 123,
+    });
+
+    expect(recovered).toEqual({ ok: true, value: 2 });
+    await expect(stat(deadStage)).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(inactiveStage)).rejects.toMatchObject({ code: "ENOENT" });
+    expect((await stat(liveStage)).isDirectory()).toBe(true);
+    expect((await stat(unrelated)).isDirectory()).toBe(true);
+    expect((await stat(finalBundle)).isDirectory()).toBe(true);
+  });
+
+  test("preserves an active same-process artifact staging writer", async () => {
+    const root = await temporaryDirectory("reynard-artifact-active-staging-");
+    const runsDirectory = join(root, "runs");
+    const input = withRunsDirectory(makeArtifactInput(), runsDirectory);
+    let markStagingReady!: () => void;
+    const stagingReady = new Promise<void>((resolveReady) => {
+      markStagingReady = resolveReady;
+    });
+    let releaseWrite!: () => void;
+    const writeGate = new Promise<void>((resolveWrite) => {
+      releaseWrite = resolveWrite;
+    });
+    let blocked = false;
+    const blockedWrite = async (path: string, contents: string): Promise<void> => {
+      if (!blocked) {
+        blocked = true;
+        markStagingReady();
+        await writeGate;
+      }
+      await writeFile(path, contents, { flag: "wx", mode: 0o600 });
+    };
+    const writer = writeArtifactBundle(input, { io: { writeFile: blockedWrite } });
+    await stagingReady;
+    const stagingNames = (await readdir(runsDirectory)).filter((name) =>
+      name.includes(".staging-"),
+    );
+
+    expect(stagingNames).toEqual([
+      expect.stringMatching(
+        new RegExp(
+          `^\\.${input.manifest.runId}\\.staging-p${process.pid}-[0-9a-f-]{36}$`,
+        ),
+      ),
+    ]);
+    expect(
+      await recoverArtifactPublishLocks(runsDirectory, {
+        isProcessAlive: () => true,
+      }),
+    ).toEqual({ ok: true, value: 0 });
+    expect((await stat(join(runsDirectory, stagingNames[0] ?? "missing"))).isDirectory()).toBe(true);
+    releaseWrite();
+    expect((await writer).ok).toBe(true);
+  });
+
+  test.each(["file", "symlink"] as const)(
+    "fails closed on an exact-namespace artifact staging %s",
+    async (kind) => {
+      const root = await temporaryDirectory("reynard-artifact-staging-type-");
+      const runsDirectory = join(root, "runs");
+      const external = join(root, "external");
+      const sentinel = join(external, "keep.txt");
+      await mkdir(runsDirectory, { mode: 0o700 });
+      await mkdir(external);
+      await writeFile(sentinel, "preserve me");
+      const stage = join(
+        runsDirectory,
+        `.${digest("5")}.staging-p999999999-00000000-0000-4000-8000-000000000005`,
+      );
+      if (kind === "file") await writeFile(stage, "not a directory");
+      else await symlink(external, stage);
+
+      expect(
+        await recoverArtifactPublishLocks(runsDirectory, {
+          isProcessAlive: () => false,
+        }),
+      ).toEqual({
+        ok: false,
+        error: expect.objectContaining({ _tag: "ArtifactWriteFailed" }),
+      });
+      expect(await readFile(sentinel, "utf8")).toBe("preserve me");
+    },
+  );
+
+  test("treats a validated rename as committed when lock release fails", async () => {
+    const root = await temporaryDirectory("reynard-artifact-release-failure-");
+    const runsDirectory = join(root, "runs");
+    const input = withRunsDirectory(makeArtifactInput(), runsDirectory);
+
+    const written = await writeArtifactBundle(input, {
+      releasePublishLock: async () => {
+        throw new Error("injected release failure");
+      },
+    });
+
+    expect(written).toEqual({
+      ok: true,
+      value: {
+        directory: join(runsDirectory, input.manifest.runId),
+        published: true,
+      },
+    });
+    expect(
+      (
+        await readArtifactBundle(
+          join(runsDirectory, input.manifest.runId),
+          input.loadedCases,
+        )
+      ).ok,
+    ).toBe(true);
+    const names = (await readdir(runsDirectory)).sort();
+    expect(names).toEqual([
+      `.${input.manifest.runId}.publish-lock`,
+      input.manifest.runId,
+    ]);
   });
 
   test("tightens a checkout-shaped 0755 runs directory before publication", async () => {
