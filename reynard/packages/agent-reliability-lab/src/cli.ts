@@ -23,7 +23,7 @@ import type { LabError, Result } from "./errors.js";
 import { evaluateExecutions } from "./evaluator.js";
 import { createRunManifest, resolveEvaluatorIdentity } from "./manifest.js";
 import { createCandidateRequests, loadEvaluationCases } from "./runner.js";
-import { DockerSandbox } from "./sandbox/docker.js";
+import { createDockerSandbox } from "./sandbox/docker.js";
 
 interface CliOptions {
   readonly baseline: string;
@@ -156,7 +156,9 @@ async function evaluate(options: CliOptions): Promise<Result<CompletedEvaluation
     const artifactRecovery = await recoverArtifactPublishLocks(runsDirectory);
     if (!artifactRecovery.ok) return artifactRecovery;
 
-    const sandbox = new DockerSandbox();
+    const createdSandbox = createDockerSandbox();
+    if (!createdSandbox.ok) return createdSandbox;
+    const sandbox = createdSandbox.value;
     const available = await sandbox.checkAvailability();
     if (!available.ok) return available;
     const recovered = await sandbox.recoverStaleState();

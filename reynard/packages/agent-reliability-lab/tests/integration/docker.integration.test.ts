@@ -13,15 +13,18 @@ import {
   type CandidateDefinition,
   type ResolvedCandidate,
 } from "../../src/contracts.js";
-import { DockerSandbox } from "../../src/sandbox/docker.js";
+import {
+  DockerSandbox,
+  dockerExecutableForPlatform,
+} from "../../src/sandbox/docker.js";
 
 const execFile = promisify(execFileCallback);
-const DOCKER = "/usr/local/bin/docker";
+const DOCKER = dockerExecutableForPlatform(process.platform);
 const IMAGE =
-  "busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662" as CandidateDefinition["image"];
+  "node@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293" as CandidateDefinition["image"];
 const IMAGE_ID =
-  "sha256:b7c873bd97bdc9046fc894e0b216c8aef31e0db4c5b761fb53022e40577ab6c0" as const;
-const PLATFORM = "linux/arm64" as const;
+  "sha256:11cedc39e663e7c5d5cb9cc77a461a0d2adc25537b94e6831a6108f09cb2001b" as const;
+const PLATFORM = "linux/amd64" as const;
 const temporaryDirectories: string[] = [];
 let uniqueOrdinal = 0;
 
@@ -102,8 +105,7 @@ async function prepareCandidate(
     reference: IMAGE,
     imageId: IMAGE_ID,
     os: "linux",
-    architecture: "arm64",
-    variant: "v8",
+    architecture: "amd64",
     platform: PLATFORM,
   });
   return {
@@ -143,19 +145,6 @@ async function expectNoRuntimeState(
 }
 
 describe("real locked-down Docker runner", () => {
-  test("reports a genuinely missing Docker executable without a host fallback", async () => {
-    const sandbox = new DockerSandbox({
-      executable: "/definitely/missing/reynard-docker",
-    });
-
-    const result = await sandbox.checkAvailability();
-
-    expect(result).toEqual({
-      ok: false,
-      error: expect.objectContaining({ _tag: "SandboxUnavailable" }),
-    });
-  });
-
   test("times out a real container and leaves no container, cidfile, or snapshot", async () => {
     const root = await temporaryDirectory("reynard-real-timeout-");
     const prepared = await prepareCandidate(
@@ -309,11 +298,21 @@ describe("real locked-down Docker runner", () => {
         networkName,
         "--name",
         listenerName,
+        "--entrypoint",
+        "/usr/local/bin/node",
         IMAGE,
-        "sh",
-        "-c",
-        "mkdir -p /www; printf ok >/www/index.html; exec httpd -f -p 8080 -h /www",
+        "-e",
+        'require("node:http").createServer((_request, response) => response.end("ok")).listen(8080, "0.0.0.0")',
       ]);
+      const listenerAddress = (
+        await docker([
+          "inspect",
+          "--format",
+          `{{(index .NetworkSettings.Networks "${networkName}").IPAddress}}`,
+          listenerName,
+        ])
+      ).trim();
+      expect(listenerAddress).toMatch(/^[0-9]+(?:\.[0-9]+){3}$/);
       let positiveControl = "";
       for (let attempt = 0; attempt < 10; attempt += 1) {
         try {
@@ -325,10 +324,11 @@ describe("real locked-down Docker runner", () => {
             PLATFORM,
             "--network",
             networkName,
+            "--entrypoint",
+            "/usr/local/bin/node",
             IMAGE,
-            "wget",
-            "-qO-",
-            `http://${listenerName}:8080/`,
+            "-e",
+            `fetch("http://${listenerAddress}:8080/", { signal: AbortSignal.timeout(1000) }).then((response) => response.text()).then((text) => process.stdout.write(text))`,
           ]);
           break;
         } catch {
@@ -342,7 +342,7 @@ describe("real locked-down Docker runner", () => {
         [
           "#!/bin/sh",
           "IFS= read -r request",
-          `if wget -q -T 1 -O - http://${listenerName}:8080/ >/dev/null 2>&1; then`,
+          `if /usr/local/bin/node -e 'fetch("http://${listenerAddress}:8080/", { signal: AbortSignal.timeout(1000) }).then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1))' >/dev/null 2>&1; then`,
           "  printf '{\"networkBlocked\":false}\\n'",
           "else",
           "  printf '{\"networkBlocked\":true}\\n'",

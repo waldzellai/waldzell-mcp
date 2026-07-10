@@ -26,6 +26,8 @@ import {
 import { createCandidateRequests } from "../../src/runner.js";
 import {
   DockerSandbox,
+  createDockerSandbox,
+  dockerExecutableForPlatform,
   type ProcessExecutor,
   type ProcessInvocation,
   type ProcessOutcome,
@@ -35,6 +37,31 @@ const IMAGE_REFERENCE =
   `busybox@sha256:${"a".repeat(64)}` as CandidateDefinition["image"];
 const IMAGE_ID = `sha256:${"b".repeat(64)}` as const;
 const temporaryDirectories: string[] = [];
+
+describe("fixed Docker executable selection", () => {
+  test.each([
+    ["darwin", "/usr/local/bin/docker"],
+    ["linux", "/usr/bin/docker"],
+  ] as const)("maps %s to its fixed executable", (platform, executable) => {
+    expect(dockerExecutableForPlatform(platform)).toBe(executable);
+  });
+
+  test("fails closed on an unsupported host platform", () => {
+    expect(() => dockerExecutableForPlatform("win32")).toThrow(
+      /unsupported Docker host platform: win32/i,
+    );
+  });
+
+  test("maps an unsupported platform to typed sandbox unavailability", () => {
+    expect(createDockerSandbox({ platform: "win32" })).toEqual({
+      ok: false,
+      error: {
+        _tag: "SandboxUnavailable",
+        message: "Unsupported Docker host platform: win32",
+      },
+    });
+  });
+});
 
 async function temporaryDirectory(prefix: string): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), prefix));
@@ -182,10 +209,10 @@ describe("locked-down Docker runner", () => {
     const candidate = await makeCandidate(root);
     const executor = new RecordingExecutor();
     const sandbox = new DockerSandbox({
-      executable: "/usr/local/bin/docker",
       executor,
       stateRoot,
       ownerPid: 42_424,
+      platform: "darwin",
       uniqueId: () => "unit-1",
       isProcessAlive: () => true,
     });
@@ -396,8 +423,6 @@ describe("locked-down Docker runner", () => {
     expect(executor.invocations[0]?.args).toEqual([
       "image",
       "inspect",
-      "--platform",
-      "linux/arm64",
       IMAGE_REFERENCE,
     ]);
     expect(JSON.stringify(executor.invocations)).not.toContain("pull");
@@ -877,13 +902,13 @@ describe("locked-down Docker runner", () => {
       invocation.args[0] === "version"
         ? successfulOutcome({
             exitCode: null,
-            spawnError: "spawn /missing/docker ENOENT",
+            spawnError: "spawn /usr/bin/docker ENOENT",
           })
         : defaultResponse(invocation),
     );
     const sandbox = new DockerSandbox({
-      executable: "/missing/docker",
       executor,
+      platform: "linux",
       stateRoot: join(root, "state"),
     });
 

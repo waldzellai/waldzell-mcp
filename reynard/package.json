@@ -17,12 +17,11 @@
     "test:integration": "vitest run packages/agent-reliability-lab/tests/integration",
     "test:acceptance": "vitest run packages/agent-reliability-lab/tests/integration/acceptance.integration.test.ts",
     "typecheck": "pnpm --filter @waldzellai/agent-reliability-lab run typecheck",
-    "lint": "eslint eslint.config.js vitest.config.ts \"packages/agent-reliability-lab/**/*.ts\"",
-    "verify": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test:unit && pnpm run test:integration && pnpm run guard:retirement",
+    "lint": "eslint eslint.config.js vitest.config.ts \"scripts/*.mjs\" \"packages/agent-reliability-lab/**/*.ts\"",
+    "verify": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run guard:production-source && pnpm run test:unit && pnpm run test:integration && pnpm run guard:retirement",
     "lab": "node packages/agent-reliability-lab/dist/cli.js",
-    "guard:retired-basenames": "sh -c 'retired_dir=agentic-scripts; git -C .. grep -n -E \"(code-review-advanced\\.sh|intelligent-debugger\\.sh|adas-meta-agent\\.sh|memory-manager\\.sh|performance-driven-auto-tuning\\.sh)\" -- . \":(exclude)$retired_dir/README.md\" \":(exclude)reynard/RELIABILITY_LAB_PLAN.md\" \":(exclude)reynard/docs/provenance.md\"; test $? -eq 1'",
-    "guard:retired-path": "sh -c 'retired_dir=agentic-scripts; git -C .. grep -n -F \"$retired_dir/\" -- . \":(exclude)$retired_dir/README.md\" \":(exclude)reynard/RELIABILITY_LAB_PLAN.md\" \":(exclude)reynard/docs/provenance.md\"; test $? -eq 1'",
-    "guard:retirement": "pnpm run guard:retired-basenames && pnpm run guard:retired-path"
+    "guard:production-source": "node scripts/guard-production-source.mjs",
+    "guard:retirement": "node scripts/guard-retirement.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.5.0",

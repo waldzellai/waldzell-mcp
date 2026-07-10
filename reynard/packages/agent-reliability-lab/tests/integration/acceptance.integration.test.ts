@@ -24,13 +24,14 @@ import {
   readArtifactBundle,
   type CandidateDefinition,
 } from "../../src/index.js";
+import { dockerExecutableForPlatform } from "../../src/sandbox/docker.js";
 
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const WORKSPACE_ROOT = resolve(PACKAGE_ROOT, "../..");
 const CLI = join(PACKAGE_ROOT, "dist", "cli.js");
 const FIXTURES = join(WORKSPACE_ROOT, "fixtures", "echo");
 const CASES = join(FIXTURES, "goldens.jsonl");
-const DOCKER = "/usr/local/bin/docker";
+const DOCKER = dockerExecutableForPlatform(process.platform);
 const IMAGE =
   "node@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293";
 const IMAGE_ID =
@@ -236,7 +237,7 @@ async function runCliInPinnedContainer(
   if (options.dockerShim !== undefined) {
     mounts.push(
       "--mount",
-      `type=bind,src=${options.dockerShim},dst=/usr/local/bin/docker,readonly`,
+      `type=bind,src=${options.dockerShim},dst=/usr/bin/docker,readonly`,
     );
   }
   return docker([
@@ -561,7 +562,7 @@ describe("public CLI acceptance", () => {
 
     expect(result.exitCode).toBe(3);
     expect(result.stderr).toMatch(
-      /spawn \/usr\/local\/bin\/docker ENOENT/i,
+      /spawn \/usr\/bin\/docker ENOENT/i,
     );
     await expect(stat(sentinel)).rejects.toMatchObject({ code: "ENOENT" });
     await expect(stat(join(cwd, "runs"))).rejects.toMatchObject({ code: "ENOENT" });
@@ -606,11 +607,11 @@ describe("public CLI acceptance", () => {
       "--mount",
       `type=bind,src=${cwd},dst=/work`,
       "--mount",
-      `type=bind,src=${shim},dst=/usr/local/bin/docker,readonly`,
+      `type=bind,src=${shim},dst=/usr/bin/docker,readonly`,
       "--workdir",
       "/work",
       "--entrypoint",
-      "/usr/local/bin/docker",
+      "/usr/bin/docker",
       IMAGE,
       "image",
       "pull",

@@ -25,7 +25,7 @@ import {
 import type { Result } from "../errors.js";
 
 export interface ProcessInvocation {
-  readonly executable: string;
+  readonly executable: FixedDockerExecutable;
   readonly args: readonly string[];
   readonly stdin?: string;
   readonly env: Readonly<Record<string, string>>;
@@ -170,15 +170,31 @@ class NodeProcessExecutor implements ProcessExecutor {
 }
 
 export interface DockerSandboxOptions {
-  readonly executable?: string;
   readonly executor?: ProcessExecutor;
   readonly stateRoot?: string;
   readonly ownerPid?: number;
   readonly uniqueId?: () => string;
   readonly isProcessAlive?: (pid: number) => boolean;
+  readonly platform?: NodeJS.Platform;
 }
 
-const DEFAULT_DOCKER_EXECUTABLE = "/usr/local/bin/docker";
+export type FixedDockerExecutable =
+  | "/usr/local/bin/docker"
+  | "/usr/bin/docker";
+
+export function dockerExecutableForPlatform(
+  platform: NodeJS.Platform,
+): FixedDockerExecutable {
+  switch (platform) {
+    case "darwin":
+      return "/usr/local/bin/docker";
+    case "linux":
+      return "/usr/bin/docker";
+    default:
+      throw new Error(`Unsupported Docker host platform: ${platform}`);
+  }
+}
+
 const DOCKER_ENVIRONMENT = {
   DOCKER_HOST: "unix:///var/run/docker.sock",
 } as const;
@@ -237,7 +253,7 @@ function processSucceeded(outcome: ProcessOutcome): boolean {
 }
 
 export class DockerSandbox implements CandidateRunner {
-  readonly executable: string;
+  readonly executable: FixedDockerExecutable;
   readonly stateRoot: string;
   private readonly executor: ProcessExecutor;
   private readonly ownerPid: number;
@@ -246,7 +262,9 @@ export class DockerSandbox implements CandidateRunner {
   private recoveryComplete = false;
 
   constructor(options: DockerSandboxOptions = {}) {
-    this.executable = options.executable ?? DEFAULT_DOCKER_EXECUTABLE;
+    this.executable = dockerExecutableForPlatform(
+      options.platform ?? process.platform,
+    );
     this.executor = options.executor ?? new NodeProcessExecutor();
     this.stateRoot = options.stateRoot ?? defaultLabStateRoot();
     this.ownerPid = options.ownerPid ?? process.pid;
@@ -299,8 +317,6 @@ export class DockerSandbox implements CandidateRunner {
         this.controlInvocation([
           "image",
           "inspect",
-          "--platform",
-          candidate.data.platform,
           candidate.data.image,
         ]),
       );
@@ -661,5 +677,15 @@ export class DockerSandbox implements CandidateRunner {
         ? executionFailed(message)
         : sandboxUnavailable(message);
     }
+  }
+}
+
+export function createDockerSandbox(
+  options: DockerSandboxOptions = {},
+): Result<DockerSandbox> {
+  try {
+    return { ok: true, value: new DockerSandbox(options) };
+  } catch (error) {
+    return sandboxUnavailable(errorMessage(error));
   }
 }
