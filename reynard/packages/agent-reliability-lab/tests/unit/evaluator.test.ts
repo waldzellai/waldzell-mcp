@@ -265,6 +265,7 @@ describe("evaluateExecutions", () => {
             caseId: "case-1",
             protocolResult: {
               ok: false,
+              // @ts-expect-error This test deliberately crosses the typed boundary.
               error: "/private/host/path: parser exploded",
             },
           },

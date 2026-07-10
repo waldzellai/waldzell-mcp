@@ -18,9 +18,12 @@
     "reynard-lab": "./dist/cli.js"
   },
   "scripts": {
+    "prebuild": "node scripts/clean-dist.mjs",
     "build": "tsc -p tsconfig.json",
     "lab": "node dist/cli.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "pnpm run typecheck:source && pnpm run typecheck:tests",
+    "typecheck:source": "tsc -p tsconfig.json --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.tests.json --noEmit"
   },
   "dependencies": {
     "zod": "3.25.76"
