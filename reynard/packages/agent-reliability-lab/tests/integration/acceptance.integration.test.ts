@@ -1,4 +1,7 @@
-import { spawn } from "node:child_process";
+import {
+  spawn,
+  type ChildProcessWithoutNullStreams,
+} from "node:child_process";
 import {
   chmod,
   cp,
@@ -46,10 +49,53 @@ interface CommandResult {
   readonly stderr: string;
 }
 
+interface RunningCommand {
+  readonly child: ChildProcessWithoutNullStreams;
+  readonly pid: number;
+  readonly result: Promise<CommandResult>;
+}
+
 async function temporaryDirectory(prefix: string): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), prefix));
   temporaryDirectories.push(directory);
   return directory;
+}
+
+function startCommand(
+  executable: string,
+  args: readonly string[],
+  options: {
+    readonly cwd: string;
+    readonly stdin?: string;
+  },
+): RunningCommand {
+  const child = spawn(executable, [...args], {
+    cwd: options.cwd,
+    env: { ...process.env },
+    shell: false,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  if (child.pid === undefined) {
+    throw new Error(`Command did not start: ${executable}`);
+  }
+  const pid = child.pid;
+  const result = new Promise<CommandResult>((resolveResult, reject) => {
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+    child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
+    child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
+    child.once("error", reject);
+    child.once("close", (exitCode) => {
+      resolveResult({
+        pid,
+        exitCode,
+        stdout: Buffer.concat(stdout).toString("utf8"),
+        stderr: Buffer.concat(stderr).toString("utf8"),
+      });
+    });
+    child.stdin.end(options.stdin ?? "");
+  });
+  return { child, pid, result };
 }
 
 function execute(
@@ -60,32 +106,7 @@ function execute(
     readonly stdin?: string;
   },
 ): Promise<CommandResult> {
-  return new Promise((resolveResult, reject) => {
-    const child = spawn(executable, [...args], {
-      cwd: options.cwd,
-      env: { ...process.env },
-      shell: false,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    const stdout: Buffer[] = [];
-    const stderr: Buffer[] = [];
-    child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
-    child.once("error", reject);
-    child.once("close", (exitCode) => {
-      if (child.pid === undefined) {
-        reject(new Error(`Command did not start: ${executable}`));
-        return;
-      }
-      resolveResult({
-        pid: child.pid,
-        exitCode,
-        stdout: Buffer.concat(stdout).toString("utf8"),
-        stderr: Buffer.concat(stderr).toString("utf8"),
-      });
-    });
-    child.stdin.end(options.stdin ?? "");
-  });
+  return startCommand(executable, args, options).result;
 }
 
 function definition(name: string): string {
@@ -126,6 +147,93 @@ async function runCli(
       cliArguments(options.baseline, options.candidate, options.cases),
     { cwd },
   );
+}
+
+function startCli(
+  cwd: string,
+  options: {
+    readonly baseline?: string;
+    readonly candidate?: string;
+    readonly cases?: string;
+  } = {},
+): RunningCommand {
+  return startCommand(
+    process.execPath,
+    cliArguments(options.baseline, options.candidate, options.cases),
+    { cwd },
+  );
+}
+
+async function waitForLabContainer(cliPid: number): Promise<string> {
+  const prefix = `reynard-lab-v1-p${cliPid}-`;
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const listed = await docker([
+      "ps",
+      "--all",
+      "--filter",
+      `name=^/${prefix}`,
+      "--format",
+      "{{.Names}}",
+    ]);
+    expect(listed.exitCode).toBe(0);
+    const name = listed.stdout
+      .split("\n")
+      .find((candidate) => candidate.startsWith(prefix));
+    if (name !== undefined) {
+      cleanupContainers.add(name);
+      return name;
+    }
+    await new Promise<void>((resolveDelay) => setTimeout(resolveDelay, 25));
+  }
+  throw new Error(`Timed out waiting for a lab container owned by PID ${cliPid}`);
+}
+
+async function directoryNames(path: string): Promise<readonly string[]> {
+  try {
+    return await readdir(path);
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+async function assertInterruptedStateClean(
+  cwd: string,
+  cliPid: number,
+  containerName: string,
+): Promise<void> {
+  const remainingContainer = await docker([
+    "ps",
+    "--all",
+    "--quiet",
+    "--filter",
+    `name=^/${containerName}$`,
+  ]);
+  expect(remainingContainer.exitCode).toBe(0);
+  expect(remainingContainer.stdout.trim()).toBe("");
+  cleanupContainers.delete(containerName);
+  const prefix = `reynard-lab-v1-p${cliPid}-`;
+  const stateRoot = join(tmpdir(), "reynard-lab-v1");
+  expect(
+    (await directoryNames(join(stateRoot, "staging"))).filter((name) =>
+      name.startsWith(prefix),
+    ),
+  ).toEqual([]);
+  expect(
+    (await directoryNames(join(stateRoot, "cidfiles"))).filter((name) =>
+      name.startsWith(prefix),
+    ),
+  ).toEqual([]);
+  const runNames = await directoryNames(join(cwd, "runs"));
+  expect(runNames.filter((name) => name !== ".gitkeep")).toEqual([]);
 }
 
 async function runDirectory(cwd: string): Promise<string> {
@@ -662,6 +770,28 @@ describe("public CLI acceptance", () => {
     expect(createdNames).toHaveLength(1);
     await expect(stat(join(cwd, "runs"))).rejects.toMatchObject({ code: "ENOENT" });
   }, 15_000);
+
+  test.each(["SIGINT", "SIGTERM"] as const)(
+    "a real %s interrupts the built CLI with exit 4 and complete cleanup",
+    async (signal) => {
+      const cwd = await temporaryDirectory(
+        `reynard-accept-${signal.toLowerCase()}-`,
+      );
+      const running = startCli(cwd, {
+        baseline: definition("slow"),
+        candidate: definition("candidate"),
+      });
+      const containerName = await waitForLabContainer(running.pid);
+
+      expect(running.child.kill(signal)).toBe(true);
+      const result = await running.result;
+
+      expect(result.exitCode).toBe(4);
+      expect(result.stderr).toMatch(/baseline.*execution failed/i);
+      await assertInterruptedStateClean(cwd, running.pid, containerName);
+    },
+    15_000,
+  );
 
   test("a fresh-checkout 0755 runs directory is tightened before a valid run", async () => {
     const cwd = await temporaryDirectory("reynard-accept-checkout-runs-");

@@ -25,6 +25,21 @@ describe("Reynard workspace structure", () => {
     expect(cliSource).not.toContain("cleanupCandidateSnapshot(snapshot).catch");
   });
 
+  it("keeps real SIGINT and SIGTERM CLI acceptance coverage", async () => {
+    const acceptanceSource = await readFile(
+      resolve(
+        reynardRoot,
+        "packages/agent-reliability-lab/tests/integration/acceptance.integration.test.ts",
+      ),
+      "utf8",
+    );
+
+    expect(acceptanceSource).toContain(
+      'test.each(["SIGINT", "SIGTERM"] as const)',
+    );
+    expect(acceptanceSource).toContain("child.kill(signal)");
+  });
+
   it("keeps only the supported reliability-lab workspace package", async () => {
     const packageDirectories = (await readdir(resolve(reynardRoot, "packages"), {
       withFileTypes: true,
