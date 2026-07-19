@@ -1,6 +1,6 @@
 # Waldzell MCP Servers
 
-This repository contains a set of Model Context Protocol (MCP) servers. Each server lives in its own folder under `servers/` and can be used independently. The project is intentionally lightweight and does not make use of a complex monorepo toolchain.
+This repository contains a set of Model Context Protocol (MCP) servers for clients such as Roo Code and its community successor, [Zoo Code](https://zoocode.dev/). Each server lives in its own folder under `servers/` and can be used independently. The project is intentionally lightweight and does not make use of a complex monorepo toolchain.
 
 ## Available servers
 
@@ -47,4 +47,3 @@ npm run build --workspaces && changeset publish
 ## License
 
 All code in this repository is licensed under the MIT License.
-
